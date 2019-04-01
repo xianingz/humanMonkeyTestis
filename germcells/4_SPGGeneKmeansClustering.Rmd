@@ -1,0 +1,263 @@
+#. Kmeans for SPG Clusters
+
+```{r}
+hum.spg.cen <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.spg.cen.rds")
+mac.spg.cen <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.spg.cen.rds")
+mou.spg.cen <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.spg.cen.rds")
+#Process 
+hum.spg.cen.6 <- hum.spg.cen[,1:6]
+mac.spg.cen.6 <- mac.spg.cen[,1:6]
+mou.spg.cen.6 <- mou.spg.cen[,1:6]
+rownames(hum.spg.cen.6) <- rownames(spg.cca@data)
+rownames(mac.spg.cen.6) <- rownames(spg.cca@data)
+rownames(mou.spg.cen.6) <- rownames(spg.cca@data)
+hum.spg.cen.6.log <- log(hum.spg.cen.6+1)
+mac.spg.cen.6.log <- log(mac.spg.cen.6+1)
+mou.spg.cen.6.log <- log(mou.spg.cen.6+1)
+hum.spg.cen.6.std <- t(apply(hum.spg.cen.6.log, 1, function(x) (x-mean(x))/sd(x)))
+mac.spg.cen.6.std <- t(apply(mac.spg.cen.6.log, 1, function(x) (x-mean(x))/sd(x)))
+mou.spg.cen.6.std <- t(apply(mou.spg.cen.6.log, 1, function(x) (x-mean(x))/sd(x)))
+``` 
+
+HVG
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(hum.spg.cen.6.log,1,mean)
+g.var <- apply(hum.spg.cen.6.log,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+hum.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
+abline(h=0.1)
+abline(v=0.2)
+length(hum.spg.hvg)
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mac.spg.cen.6.log,1,mean)
+g.var <- apply(mac.spg.cen.6.log,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+mac.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
+abline(h=0.1)
+abline(v=0.2)
+length(mac.spg.hvg)
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mou.spg.cen.6.log,1,mean)
+g.var <- apply(mou.spg.cen.6.log,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+mou.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
+abline(h=0.1)
+abline(v=0.2)
+length(mou.spg.hvg)
+```
+
+
+##. Asking for 6 clusters from kmeans
+```{r}
+colnames(hum.spg.cen.6.std) <- c(1:6)
+set.seed(123)
+hum.spg.kmean <- kmeans(hum.spg.cen.6.std[hum.spg.hvg,],6)
+for(i in c(1:6)){
+dr = Heatmap(hum.spg.cen.6.std[names(which(hum.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+```{r}
+colnames(mac.spg.cen.6.std) <- c(1:6)
+set.seed(123)
+mac.spg.kmean <- kmeans(mac.spg.cen.6.std[mac.spg.hvg,],6)
+for(i in c(1:6)){
+dr = Heatmap(mac.spg.cen.6.std[names(which(mac.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+set.seed(123)
+colnames(mou.spg.cen.6.std) <- c(1:6)
+mou.spg.kmean <- kmeans(mou.spg.cen.6.std[mou.spg.hvg,],6)
+for(i in c(1:6)){
+dr = Heatmap(mou.spg.cen.6.std[names(which(mou.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+##. Asking for 3 clusters from kmeans
+```{r}
+colnames(hum.spg.cen.6.std) <- c(1:6)
+set.seed(123)
+hum.spg.kmean <- kmeans(hum.spg.cen.6.std[hum.spg.hvg,],3)
+for(i in c(1:3)){
+dr = Heatmap(hum.spg.cen.6.std[names(which(hum.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+colnames(mac.spg.cen.6.std) <- c(1:6)
+set.seed(123)
+mac.spg.kmean <- kmeans(mac.spg.cen.6.std[mac.spg.hvg,],3)
+for(i in c(1:3)){
+dr = Heatmap(mac.spg.cen.6.std[names(which(mac.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+set.seed(123)
+colnames(mou.spg.cen.6.std) <- c(1:6)
+mou.spg.kmean <- kmeans(mou.spg.cen.6.std[mou.spg.hvg,],3)
+for(i in c(1:3)){
+dr = Heatmap(mou.spg.cen.6.std[names(which(mou.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+##. Asking for 4 clusters from kmeans
+```{r}
+colnames(hum.spg.cen.6.std) <- c(1:6)
+set.seed(123)
+hum.spg.kmean <- kmeans(hum.spg.cen.6.std[hum.spg.hvg,],4)
+for(i in c(1:4)){
+dr = Heatmap(hum.spg.cen.6.std[names(which(hum.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+colnames(mac.spg.cen.6.std) <- c(1:6)
+set.seed(123)
+mac.spg.kmean <- kmeans(mac.spg.cen.6.std[mac.spg.hvg,],4)
+for(i in c(1:4)){
+dr = Heatmap(mac.spg.cen.6.std[names(which(mac.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+set.seed(123)
+colnames(mou.spg.cen.6.std) <- c(1:6)
+mou.spg.kmean <- kmeans(mou.spg.cen.6.std[mou.spg.hvg,],4)
+for(i in c(1:4)){
+dr = Heatmap(mou.spg.cen.6.std[names(which(mou.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+Write Kmeans to file
+```{r}
+len <- max(max(table(hum.spg.kmean$cluster)))
+hum.hvgs.kmean.write <- c()
+stages <- c(3,2,1,4)
+for(i in stages){
+  genes <- names(which(hum.spg.kmean$cluster==i))
+  hum.hvgs.kmean.write <- cbind(hum.hvgs.kmean.write, c(genes, rep("", len-length(genes) )))
+}
+write.table(hum.hvgs.kmean.write, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/hum.spg.kmean.gene.list.txt", quote = FALSE, row.names = FALSE,sep = "\t")
+
+len <- max(max(table(mac.spg.kmean$cluster)))
+mac.hvgs.kmean.write <- c()
+stages <- c(2,3,1,4)
+for(i in stages){
+  genes <- humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x %in% names(which(mac.spg.kmean$cluster==i))]
+  mac.hvgs.kmean.write <- cbind(mac.hvgs.kmean.write, c(genes, rep("", len-length(genes) )))
+}
+write.table(mac.hvgs.kmean.write, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/mac.spg.kmean.gene.list.txt", quote = FALSE, row.names = FALSE,sep = "\t")
+
+len <- max(max(table(mou.spg.kmean$cluster)))
+mou.hvgs.kmean.write <- c()
+stages <- c(1,4,2,3)
+for(i in stages){
+  genes <- humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x %in% names(which(mou.spg.kmean$cluster==i))]
+  mou.hvgs.kmean.write <- cbind(mou.hvgs.kmean.write, c(genes, rep("", len-length(genes) )))
+}
+write.table(mou.hvgs.kmean.write, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/mou.spg.kmeans.gene.list.txt", quote = FALSE, row.names = FALSE,sep = "\t")
+```
+
+Check genes that have high expression in both ends
+```{r}
+mac.genes.hb <- names(which(mac.spg.kmean$cluster==4))
+mac.genes.hb <- mac.genes.hb[mac.spg.cen.6.std[mac.genes.hb,1] > 0.9 & mac.spg.cen.6.std[mac.genes.hb,6] > 0.9]
+```
+
+```{r fig.width=10, fig.height=20}
+colfunc <- colorRampPalette(c("blue", "white", "red"), bias=5)
+FeaturePlot(object = spg.cca, features.plot = mac.genes.hb,cols.use = colfunc(100),cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Monkey"], dark.theme = TRUE, pt.size = 0.5)
+```
+
+
+overlapping HVGs
+```{r}
+int.hvgs <- intersect(hum.spg.hvg, mac.spg.hvg)
+int.hvgs <- intersect(int.hvgs, mou.spg.hvg)
+```
+
+Expression Correlation acorss 6 clusters
+```{r}
+spg.gene.cor <- c()
+for(i in rownames(hum.spg.cen.6)){
+  spg.hummac.cor <- cor(hum.spg.cen.6[i,],mac.spg.cen.6[i,], method = "spearman")
+  spg.hummou.cor <- cor(hum.spg.cen.6[i,],mou.spg.cen.6[i,], method = "spearman")
+  spg.macmou.cor <- cor(mac.spg.cen.6[i,],mou.spg.cen.6[i,], method = "spearman")
+  spg.gene.cor <- rbind(spg.gene.cor, c(spg.hummac.cor, spg.hummou.cor, spg.macmou.cor))
+}
+rownames(spg.gene.cor) <- rownames(hum.spg.cen.6)
+```
+
+```{r fig.height=5, fig.width=5}
+hist(spg.gene.cor[,1], breaks = 200, main = "Human vs. Monkey", xlab="Gene expression correlation")
+hist(spg.gene.cor[,2], breaks = 200, main = "Human vs. Mouse", xlab="Gene expression correlation")
+hist(spg.gene.cor[,3], breaks = 200, main = "Monkey vs. Mouse", xlab="Gene expression correlation")
+```
+
+#Correlation with sequence identity and dN/dS
+```{r}
+spg.gene.cor <- cbind(spg.gene.cor, gene.cor[,c(4:9)])
+colnames(spg.gene.cor) <- colnames(gene.cor)
+```
+
+```{r fig.width=5, fig.height=10}
+hummac.cor <- data.frame(spg.gene.cor[,c("HumMacCor", "HumMacdNdS", "HumMacSeq")])
+hummac.cor <- hummac.cor[!is.na(hummac.cor$HumMacCor) & !is.na(hummac.cor$HumMacdNdS) & !is.infinite(hummac.cor$HumMacdNdS),]
+hummac.cor$seqdensity <- get_density(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacSeq, y=HumMacCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+hummac.cor$dnsdensity <- get_density(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacdNdS, y=HumMacCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+```{r fig.width=5, fig.height=10}
+hummou.cor <- data.frame(spg.gene.cor[,c("HumMouCor", "HumMoudNdS", "HumMouSeq")])
+hummou.cor <- hummou.cor[!is.na(hummou.cor$HumMouCor) & !is.na(hummou.cor$HumMoudNdS) & !is.infinite(hummou.cor$HumMoudNdS),]
+hummou.cor$seqdensity <- get_density(hummou.cor$HumMouSeq, hummou.cor$HumMouCor, n = 100)
+cortest <- cor.test(hummou.cor$HumMouSeq, hummou.cor$HumMouCor, method="spearman")
+p <- ggplot(hummou.cor) + geom_point(aes(x=HumMouSeq, y=HumMouCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+hummou.cor$dnsdensity <- get_density(hummou.cor$HumMoudNdS, hummou.cor$HumMouCor, n = 100)
+cortest <- cor.test(hummou.cor$HumMoudNdS, hummou.cor$HumMouCor, method="spearman")
+p <- ggplot(hummou.cor) + geom_point(aes(x=HumMoudNdS, y=HumMouCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+```{r fig.width=5, fig.height=10}
+macmou.cor <- data.frame(spg.gene.cor[,c("MacMouCor", "MacMoudNdS", "MacMouSeq")])
+macmou.cor <- macmou.cor[!is.na(macmou.cor$MacMouCor) & !is.na(macmou.cor$MacMoudNdS) & !is.infinite(macmou.cor$MacMoudNdS),]
+macmou.cor$seqdensity <- get_density(macmou.cor$MacMouSeq, macmou.cor$MacMouCor, n = 100)
+cortest <- cor.test(macmou.cor$MacMouSeq, macmou.cor$MacMouCor, method="spearman")
+p <- ggplot(macmou.cor) + geom_point(aes(x=MacMouSeq, y=MacMouCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Monkey vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+macmou.cor$dnsdensity <- get_density(macmou.cor$MacMoudNdS, macmou.cor$MacMouCor, n = 100)
+cortest <- cor.test(macmou.cor$MacMoudNdS, macmou.cor$MacMouCor, method="spearman")
+p <- ggplot(macmou.cor) + geom_point(aes(x=MacMoudNdS, y=MacMouCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Monkey vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+```{r}
+a=1
+```

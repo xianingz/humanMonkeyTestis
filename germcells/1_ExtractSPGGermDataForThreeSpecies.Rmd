@@ -1,0 +1,137 @@
+## Process counts Data to extract germ cells and spg cells from three species
+
+```{r}
+setwd("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/")
+```
+
+###. Raw counts data for three species
+```{r}
+humMacMouOrth.1to1.in <- readRDS("../interdata/humMacMouOrth.1to1.in.Rds")
+load("./human_merged1235_20cpg15upg.robj")
+dge.hum.raw <- dge@raw.data
+rm(dge)
+load("./mac_merged9_nospikeincells.Robj")
+dge.mac.raw <- dge@raw.data
+rm(dge)
+dge.hum.raw <- dge.hum.raw[humMacMouOrth.1to1.in$external_gene_name.x,]
+dge.mac.raw <- dge.mac.raw[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,]
+```
+
+
+###. Full dataset
+```{r}
+clushum <- read.table("./Human_Merged4Subjects-1235-NoC5_ClusterIDs_res.0.6order_Qianyi_1.9.2019.txt",row.names = 1,sep="\t",header = FALSE)
+hum.num.gene <- apply(dge.hum.raw, 2, function(x) sum(x>0))
+dge.hum.raw2 <- dge.hum.raw[,hum.num.gene >= 600]
+hum.cells <- rownames(clushum)
+ind1.cells <- hum.cells
+hum.cells <- str_replace_all(hum.cells,"Human1.1","Human1")
+hum.cells <- str_replace_all(hum.cells,"Human1.2","Human2")
+hum.cells <- str_replace_all(hum.cells,"Human1.3","Human3")
+hum.cells <- str_replace_all(hum.cells,"Human1.4","Human4")
+hum.cells <- str_replace_all(hum.cells,"Human5", "Human11")
+hum.cells <- str_replace_all(hum.cells,"Human1.5","Human5")
+hum.cells <- str_replace_all(hum.cells,"Human2.1","Human6")
+hum.cells <- str_replace_all(hum.cells,"Human2.2","Human7")
+hum.cells <- str_replace_all(hum.cells,"Human3.1","Human8")
+hum.cells <- str_replace_all(hum.cells,"Human3.2","Human9")
+clushum <- clushum[ind1.cells,]
+names(clushum) = hum.cells
+
+dge.hum.spg.raw <- dge.hum.raw2[,clushum[colnames(dge.hum.raw2)] %in% c(5:7)]
+dge.hum.raw2 <- dge.hum.raw2[,clushum[colnames(dge.hum.raw2)] %in% c(8:13)]
+```
+
+
+```{r}
+clusmac <- read.table("./Monkey_Merged5Subjects_ClusterIDs_res.0.5order_Qianyi_1.9.2019.txt",row.names = 1,sep="\t",header = FALSE)
+mac.num.gene <- apply(dge.mac.raw, 2, function(x) sum(x>0))
+dge.mac.raw2 <- dge.mac.raw[, mac.num.gene >= 600]
+mac.cells <- rownames(clusmac)
+ind4.cells <- mac.cells
+mac.cells <- str_replace_all(mac.cells,"Monkey1.1","Monkey1")
+mac.cells <- str_replace_all(mac.cells,"Monkey2", "Monkey3")
+mac.cells <- str_replace_all(mac.cells,"Monkey1.2","Monkey2")
+mac.cells <- str_replace_all(mac.cells,"Monkey3.1","Monkey4")
+mac.cells <- str_replace_all(mac.cells,"Monkey3.2","Monkey5")
+mac.cells <- str_replace_all(mac.cells,"Monkey4.1","Monkey6")
+mac.cells <- str_replace_all(mac.cells,"Monkey4.2","Monkey7")
+mac.cells <- str_replace_all(mac.cells,"Monkey5.1","Monkey8")
+mac.cells <- str_replace_all(mac.cells,"Monkey5.2","Monkey9")
+clusmac <- clusmac[ind4.cells,]
+names(clusmac) = mac.cells
+
+dge.mac.spg.raw <- dge.mac.raw2[,clusmac[colnames(dge.mac.raw2)] %in% c(3:4)]
+dge.mac.raw2 <- dge.mac.raw2[,clusmac[colnames(dge.mac.raw2)] %in% c(5:12)]
+```
+
+remove ineglible cells (percentage of mitochondrial)
+```{r}
+cells.remove <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/cellsremove.txt",header=FALSE)
+cells.remove <- as.character(cells.remove$V1)
+cells.remove <- str_replace_all(cells.remove,"Monkey1.1","Monkey1")
+cells.remove <- str_replace_all(cells.remove,"Monkey2", "Monkey3")
+cells.remove <- str_replace_all(cells.remove,"Monkey1.2","Monkey2")
+cells.remove <- str_replace_all(cells.remove,"Monkey3.1","Monkey4")
+cells.remove <- str_replace_all(cells.remove,"Monkey3.2","Monkey5")
+cells.remove <- str_replace_all(cells.remove,"Monkey4.1","Monkey6")
+cells.remove <- str_replace_all(cells.remove,"Monkey4.2","Monkey7")
+cells.remove <- str_replace_all(cells.remove,"Monkey5.1","Monkey8")
+cells.remove <- str_replace_all(cells.remove,"Monkey5.2","Monkey9")
+dge.mac.spg.raw <- dge.mac.spg.raw[,!colnames(dge.mac.spg.raw) %in% cells.remove]
+dge.mac.raw2 <- dge.mac.raw2[,!colnames(dge.mac.raw2) %in% cells.remove]
+```
+
+how many cells are removed from each?
+```{r}
+largecells <- names(which(mac.num.gene >= 600))
+sum(largecells[clusmac[largecells] %in% c(3:4)] %in% cells.remove)
+sum(largecells[clusmac[largecells] %in% c(5:12)] %in% cells.remove)
+```
+
+
+mouse
+```{r}
+mou.cell.attr <- read.table("./GSE112393_MergedAdultMouseST25_PerCellAttributes.txt",row.names = 1,sep = "\t",header = TRUE,comment.char = "#")
+mou.raw <- read.table("./mouse_data/xaa", header = TRUE,row.names = 1,sep="\t")
+#For all germ cells
+germ.cellnames <- rownames(mou.cell.attr)[(mou.cell.attr$CellType %in% c(8:11))]
+mou.genes <- humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name
+
+dge.mou.raw <- mou.raw[rownames(mou.raw) %in% mou.genes,colnames(mou.raw) %in% germ.cellnames]
+selectcells <- colnames(mou.raw) %in% germ.cellnames
+filelist <- paste0("./mouse_data/", list.files("./mouse_data"))
+for(i in filelist[2:length(filelist)]){
+print(i)
+mou.raw <- read.table(i, row.names = 1, sep="\t",header = FALSE)
+if(sum(rownames(mou.raw) %in% mou.genes) > 0 ){
+mou.raw <- mou.raw[rownames(mou.raw) %in% mou.genes,selectcells]
+colnames(mou.raw) <- colnames(dge.mou.raw)
+dge.mou.raw <- rbind(dge.mou.raw, mou.raw)
+}
+}
+
+mou.gene.num <- apply(dge.mou.raw,2,function(x) sum(x>0))
+#indst3 <- as.vector(sapply(rownames(mou.cell.attr),function(x) strsplit(x,'_')[[1]][1]))=="ST3"
+
+#For germ cells w/o spg
+indstg <- mou.cell.attr$CellType %in% c(9:11)
+dge.mou.raw2 <- dge.mou.raw[,mou.gene.num >= 600]
+dge.mou.raw2 <- dge.mou.raw2[,colnames(dge.mou.raw2) %in% rownames(mou.cell.attr)[indstg]]
+
+#For spg
+indsts <- mou.cell.attr$CellType==8
+dge.mou.spg.raw <- dge.mou.raw[,mou.gene.num >= 600]
+dge.mou.spg.raw <- dge.mou.spg.raw[,colnames(dge.mou.spg.raw) %in% rownames(mou.cell.attr)[indsts]]
+```
+
+save data
+```{r}
+saveRDS(dge.hum.spg.raw, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.raw.rds")
+saveRDS(dge.hum.raw2, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.raw2.rds")
+saveRDS(dge.mac.spg.raw, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.raw.rds")
+saveRDS(dge.mac.raw2, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.raw2.rds")
+saveRDS(dge.mou.spg.raw, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.raw.rds")
+saveRDS(dge.mou.raw2, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.raw2.rds")
+```
+

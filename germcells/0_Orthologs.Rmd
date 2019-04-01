@@ -1,0 +1,120 @@
+# Orthologs
+
+###. Human-Macaque
+```{r}
+library(biomaRt) #Ensemble Gene 94
+listEnsemblArchives()
+#listMarts()
+ensembl <- useMart(host='http://oct2018.archive.ensembl.org', 
+                     biomart='ENSEMBL_MART_ENSEMBL')
+#ensembl = useEnsembl(biomart="ensembl",version=94)
+#listDatasets(ensembl)
+ensembl = useDataset("hsapiens_gene_ensembl",mart=ensembl)
+#listFilters(ensembl) #265 with_mmulatta_homolog
+#searchAttributes(mart = ensembl, pattern = "mmulatta")
+
+attributes = c("ensembl_gene_id","external_gene_name","mmulatta_homolog_ensembl_gene","mmulatta_homolog_associated_gene_name","mmulatta_homolog_perc_id","mmulatta_homolog_perc_id_r1","mmulatta_homolog_goc_score","mmulatta_homolog_wga_coverage","mmulatta_homolog_dn","mmulatta_homolog_ds","mmulatta_homolog_orthology_confidence","mmulatta_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+humMac <- getBM(attributes = attributes,mart = ensembl)
+dim(humMac)
+
+
+#Remove non-homologs
+humMacOrth <- humMac[humMac$mmulatta_homolog_ensembl_gene!='',]
+dim(humMacOrth)  ##23781
+
+#Confidence
+sum(humMacOrth$mmulatta_homolog_orthology_confidence == 1)
+#20895  High confidence
+sum(humMacOrth$mmulatta_homolog_orthology_confidence == 0)
+#2976  Low confidence
+```
+
+###. Human-Mouse
+```{r}
+#searchAttributes(mart = ensembl, pattern = "mmusculus")
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name", "mmusculus_homolog_perc_id","mmusculus_homolog_perc_id_r1","mmusculus_homolog_goc_score","mmusculus_homolog_wga_coverage","mmusculus_homolog_dn","mmusculus_homolog_ds","mmusculus_homolog_orthology_confidence","mmusculus_homolog_orthology_type")
+
+humMou <- getBM(attributes = attributes,mart = ensembl)
+dim(humMou)
+
+#Remove non-homologs
+humMouOrth <- humMou[humMou$mmusculus_homolog_ensembl_gene!='',]
+dim(humMouOrth)  ##26312
+
+#Confidence
+sum(humMouOrth$mmusculus_homolog_orthology_confidence == 1)
+#17472  High confidence
+sum(humMouOrth$mmusculus_homolog_orthology_confidence == 0)
+#8840  Low confidence
+```
+
+###. Mouse-Macaque
+```{r}
+ensembl = useDataset("mmusculus_gene_ensembl",mart=ensembl)
+#searchAttributes(mart = ensembl, pattern = "mmulatta")
+
+attributes = c("ensembl_gene_id","external_gene_name","mmulatta_homolog_ensembl_gene","mmulatta_homolog_associated_gene_name", "mmulatta_homolog_perc_id","mmulatta_homolog_perc_id_r1","mmulatta_homolog_goc_score","mmulatta_homolog_wga_coverage","mmulatta_homolog_dn","mmulatta_homolog_ds","mmulatta_homolog_orthology_confidence","mmulatta_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+mouMac <- getBM(attributes = attributes,mart = ensembl)
+dim(mouMac)
+
+#Remove non-homologs
+mouMacOrth <- mouMac[mouMac$mmulatta_homolog_ensembl_gene!='',]
+dim(mouMacOrth)  ##25112
+
+#Confidence
+sum(mouMacOrth$mmulatta_homolog_orthology_confidence == 1)
+#13839  High confidence
+sum(mouMacOrth$mmulatta_homolog_orthology_confidence == 0)
+#11273  Low confidence
+```
+
+###. Human-Macaque-Mouse
+
+```{r}
+humMacMouOrth <- merge(humMacOrth,humMouOrth,by = "ensembl_gene_id")
+```
+
+###. replace genes that have no symbol in macaque with human gene symbols
+
+```{r}
+emprows = which(humMacMouOrth$mmulatta_homolog_associated_gene_name == '')
+humMacMouOrth$mmulatta_homolog_associated_gene_name[emprows] = humMacMouOrth$external_gene_name.x[emprows]
+```
+
+####. One-to-one-to-one genes
+```{r}
+humMacMouOrth.1to1 <- humMacMouOrth[humMacMouOrth$mmulatta_homolog_orthology_type=="ortholog_one2one",]
+humMacMouOrth.1to1 <- humMacMouOrth.1to1[humMacMouOrth.1to1$mmusculus_homolog_orthology_type=="ortholog_one2one",]
+```
+
+```{r}
+saveRDS(humMacMouOrth.1to1, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.Rds")
+```
+
+###. Read in Human Object Data
+```{r}
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/human_merged1235_20cpg15upg.robj")
+dge.hum <- dge@data
+rm(dge)
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mac_merged9_nospikeincells.Robj")
+dge.mac <- dge@data
+rm(dge)
+mou.genes <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/mouse.gene.list")
+```
+
+###. Genes in three species datasets
+```{r}
+humMacMouOrth.1to1.in <- humMacMouOrth.1to1[humMacMouOrth.1to1$external_gene_name.x %in% rownames(dge.hum),]
+humMacMouOrth.1to1.in <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name %in% rownames(dge.mac),]
+humMacMouOrth.1to1.in <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name %in% mou.genes$V1,]
+which(table(humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name)!=1)
+humMacMouOrth.1to1.in <- humMacMouOrth.1to1.in[!humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name %in% c("NDUFAB1","RPS26","SKP1"),]
+```
+
+```{r}
+saveRDS(humMacMouOrth.1to1.in, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
+```

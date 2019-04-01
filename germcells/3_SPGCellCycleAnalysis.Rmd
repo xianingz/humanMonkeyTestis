@@ -1,0 +1,178 @@
+#. SPG Cell Cycle Analysis
+
+## 1. Using Macosko's gene list
+Cell cycle genes
+```{r}
+cellcyclegenes <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/macosko_cellcycle_genes.csv",header=TRUE,sep=",")
+g1s.genes <- as.character(cellcyclegenes$G1.S)[cellcyclegenes$G1.S!=""]
+g1s.genes <- intersect(g1s.genes, humMacMouOrth.1to1.in$external_gene_name.x)
+s.genes <- as.character(cellcyclegenes$S)[cellcyclegenes$S!=""]
+s.genes <- intersect(s.genes, humMacMouOrth.1to1.in$external_gene_name.x)
+g2m.genes <- as.character(cellcyclegenes$G2.M)[cellcyclegenes$G2.M!=""]
+g2m.genes <- intersect(g2m.genes, humMacMouOrth.1to1.in$external_gene_name.x)
+m.genes <- as.character(cellcyclegenes$M)[cellcyclegenes$M!=""]
+m.genes <- intersect(m.genes, humMacMouOrth.1to1.in$external_gene_name.x)
+mg1.genes <- as.character(cellcyclegenes$M.G1)[cellcyclegenes$M.G1!=""]
+mg1.genes <- intersect(mg1.genes, humMacMouOrth.1to1.in$external_gene_name.x)
+cycle.genes <- c(g1s.genes, s.genes, g2m.genes, m.genes, mg1.genes)
+```
+
+```{r}
+spg.cca@meta.data$g1s <- apply(spg.cca@data[g1s.genes,],2,sum)/apply(spg.cca@data,2,sum)
+spg.cca@meta.data$s <- apply(spg.cca@data[s.genes,],2,sum)/apply(spg.cca@data,2,sum)
+spg.cca@meta.data$g2m <- apply(spg.cca@data[g2m.genes,],2,sum)/apply(spg.cca@data,2,sum)
+spg.cca@meta.data$m <- apply(spg.cca@data[m.genes,],2,sum)/apply(spg.cca@data,2,sum)
+spg.cca@meta.data$mg1 <- apply(spg.cca@data[mg1.genes,],2,sum)/apply(spg.cca@data,2,sum)
+spg.cca@meta.data$cycle <- apply(spg.cca@data[cycle.genes,],2,sum)/apply(spg.cca@data,2,sum)
+```
+
+```{r}
+colfunc <- colorRampPalette(c("blue", "grey", "red"))
+```
+
+```{r fig.width=10,fig.height=6}
+FeaturePlot(object = spg.cca, features.plot = c("cycle","g1s","s","g2m","m","mg1"),cols.use = colfunc(100),nCol=3)
+```
+
+##. using Whitefield's microarray data
+
+Read in all Whitefield's reference data, gene list and select only dataset 3 which contains most samples
+```{r}
+data <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/CellCycle_whitefield/dataPlusScores_all5.remove.quote.txt",sep="\t",header=T,row.names = 1,fill=T)
+cellcycle.genes <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/CellCycle_whitefield/CellCycleGeneList_1134.txt",header=T,row.names = 1,sep="\t")
+data.cc <- data[rownames(cellcycle.genes),]
+data.cc3 <- data.cc[,c(52:99)]
+data.cc3 <- data.cc3[rowSums(is.na(data.cc3))==0,]
+```
+
+Read in Gene ID conversion table--  MatchMiner is used to convert IMAGE clone ID into symbol ID. One IMAGE clone ID may correspond to multiple gene symbols and vice versa.
+```{r}
+id <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/CellCycle_whitefield/genesymbol.all.list",header=F,sep="\t")
+imageGene <- t(as.matrix(table(id)))
+```
+
+Rank genes according to atan2 value (This ranking doesn't really affect the result)
+```{r}
+library(ComplexHeatmap)
+data.cc3.atan2 <- data.cc3[order(data.cc[rownames(data.cc3),]$Atan2),]
+phases <- cellcycle.genes[rownames(data.cc3.atan2),]$PHASE
+ha_column = HeatmapAnnotation(df = data.frame(type1 = phases), 
+                              col = list(type1 = c("G1/S" =  "red", "G2" = "orange", "S phase"="yellow","*S phase"="yellow","G2/M"="green","M/G1"="blue")))
+
+ht1 = Heatmap(t(as.matrix(data.cc3.atan2)),top_annotation = ha_column,show_row_names = F,show_column_names = F,cluster_rows = FALSE, cluster_columns = FALSE)
+
+ComplexHeatmap::draw(ht1)
+```
+
+A new matrix ranked by the peaktime of genes for one single cycle.
+```{r fig.width=10, fig.height=8}
+cc <- 0:46
+pt <- cc%%15.4
+data.cc3.sub <- data.cc3[,2:48]
+oatan2 <- data.cc[rownames(data.cc3),]$Atan2
+ratan2 <- oatan2 + (oatan2 < 0)*2*pi
+data.cc3.sub.rank <- data.cc3.sub[order(ratan2),order(pt)]
+colnames(data.cc3.sub.rank) <- c(1:47)
+phases <- cellcycle.genes[rownames(data.cc3.sub.rank),]$PHASE
+ha_column = HeatmapAnnotation(df = data.frame(type1 = phases), 
+                              col = list(type1 = c("G1/S" =  "red", "G2" = "orange", "S phase"="yellow","*S phase"="yellow","G2/M"="green","M/G1"="blue")))
+
+ht1 = Heatmap(t(as.matrix(data.cc3.sub.rank)),top_annotation = ha_column,show_row_names = T,show_column_names = F,cluster_rows = FALSE, cluster_columns = FALSE)
+
+ComplexHeatmap::draw(ht1)
+```
+
+Define normalization function
+```{r}
+normal <- function(countsdata){
+  countsdata <- countsdata[which(apply(countsdata,1,sum)!=0),]
+  countsdata <- countsdata[,which(apply(countsdata,2,sum)!=0)]
+  data.norm <- countsdata
+  cellsum <- colSums(countsdata)
+  med=median(cellsum)
+  for(i in c(1:dim(countsdata)[2])){
+    data.norm[,i] <- (countsdata[,i]/cellsum[i])*med
+  }
+  data.log <- log10(data.norm+1)
+  data.log
+}
+```
+
+```{r}
+##colorramp function
+library(viridis)
+```
+
+
+Process single cell data and infer cell cycle stages
+```{r fig.width=10, fig.height=8}
+#Read in data
+
+#Extract gene symbol in both of our data and conversion table and do conversion
+genes <- intersect(rownames(spg.cca@raw.data),colnames(imageGene))
+ig.matrix <- imageGene[,genes]
+ig.matrix <- ig.matrix[rowSums(ig.matrix)!=0,]
+
+spg.cells.ord <- spg.cca@cell.names[order(spg.cca@meta.data$res.0.6.ord)]
+spg.cells.ord <- spg.cells.ord[spg.cca@meta.data[spg.cells.ord,]$res.0.6.ord %in% c(1:6)]
+gc.matrix <- as.matrix(spg.cca@raw.data[genes,spg.cells.ord])
+gc.matrix <- gc.matrix[,colSums(gc.matrix)!=0]
+gc.matrix <- gc.matrix[rowSums(gc.matrix)!=0,]
+spg.matrix <- as.matrix(ig.matrix) %*% as.matrix(gc.matrix)
+spg.matrix <- spg.matrix[rowSums(spg.matrix)!=0,]
+spg.matrix <- spg.matrix[,colSums(spg.matrix)!=0]
+
+#format ref data
+imageids <- intersect(rownames(spg.matrix),rownames(data.cc3.sub.rank))
+ref <- data.cc3.sub.rank[imageids,]
+
+#Normalization
+spg.matrix <- normal(spg.matrix[imageids,])
+for(i in c(1:dim(spg.matrix)[1])){
+  spg.matrix[i,]=(spg.matrix[i,]-mean(spg.matrix[i,]))/sd(spg.matrix[i,])
+}
+
+#compute correlation matrix
+corr <- cor(ref,spg.matrix,method = "spearman")
+
+#Draw heatmap
+ha_column = HeatmapAnnotation(df = data.frame(Clusters = as.vector(spg.cca@meta.data[spg.cells.ord,]$res.0.6.ord)), 
+                              col = list(Clusters = c("1" =  "#477900", "2"="#9378ff","3"="#01ce74","4" =  "#ff2b85", "5"="#b0d266","6"="#733697")))
+ht1 = Heatmap(as.matrix(corr),col = rev(colorRampPalette(brewer.pal(10, "RdBu"))(100)),top_annotation = ha_column, show_row_names = T,show_column_names = F,cluster_rows = FALSE, cluster_columns = FALSE)
+
+ComplexHeatmap::draw(ht1)
+```
+
+```{r fig.width=10, fig.height=8}
+
+#Infer stage by highest correlation
+bupt <- rownames(corr)[max.col(t(corr))]
+#cell.cycle <- data.frame(cell=colnames(data123),cycle=bupt)
+
+#cells ordered by inferred stages
+spg.cells.ord.inf <- spg.cells.ord[order(bupt)]
+
+#Draw heatmap
+ha_column = HeatmapAnnotation(df = data.frame(Clusters = as.vector(spg.cca@meta.data[spg.cells.ord.inf,]$res.0.6.ord)), 
+                              col = list(Clusters = c("1" =  "#477900", "2"="#9378ff","3"="#01ce74","4" =  "#ff2b85", "5"="#b0d266","6"="#733697","8"="#ffa19e")))
+ht2 = Heatmap(as.matrix(corr[,spg.cells.ord.inf]),top_annotation = ha_column, show_row_names = T,show_column_names = F,cluster_rows = FALSE, cluster_columns = FALSE)
+
+ComplexHeatmap::draw(ht2)
+```
+
+show in the t-SNE plot
+```{r fig.width=6.5, fig.height=4.5}
+spg.cca@meta.data$cellcycle <- 0
+spg.cca@meta.data[spg.cells.ord,]$cellcycle <- as.numeric(bupt)
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle", cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6,8)])
+```
+
+```{r fig.width=6.5, fig.height=4.5}
+colfunc <- colorRampPalette(c("blue", "lightgrey", "red"))
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle", cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)], colors.use = colfunc(47))
+```
+
+```{r}
+table(spg.cca@meta.data$cellcycle, spg.cca@meta.data$res.0.6.ord)
+```
+
