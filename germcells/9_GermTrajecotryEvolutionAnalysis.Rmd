@@ -1,0 +1,212 @@
+#. Evolution analysis for germ cell development trajectory across three species.
+
+Calculate Orthologue expression correlation
+```{r}
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+```
+
+```{r}
+library(ggExtra)
+library(viridis)
+library(gridExtra)
+```
+
+```{r}
+gene.cor <- matrix(nrow=dim(humMacMouOrth.1to1.in)[1], ncol=9)
+colnames(gene.cor) <- c("HumMacCor", "HumMouCor", "MacMouCor", "HumMacdNdS", "HumMoudNdS", "MacMoudNdS", "HumMacSeq", "HumMouSeq", "MacMouSeq")
+rownames(gene.cor) <- humMacMouOrth.1to1.in$external_gene_name.x
+for(i in c(1:dim(humMacMouOrth.1to1.in)[1])){
+  gene.cor[i,1] <- cor(hum.warped.15.lg.std[i,], mac.warped.15.lg.std[i,], method = "spearman")
+  gene.cor[i,2] <- cor(hum.warped.15.lg.std[i,], mou.warped.15.lg.std[i,], method = "spearman")
+  gene.cor[i,3] <- cor(mac.warped.15.lg.std[i,], mou.warped.15.lg.std[i,], method = "spearman")
+  
+  gene.cor[i,4] <- humMacMouOrth.1to1.in$mmulatta_homolog_dn[i]/humMacMouOrth.1to1.in$mmulatta_homolog_ds[i]
+  gene.cor[i,5] <- humMacMouOrth.1to1.in$mmusculus_homolog_dn[i]/humMacMouOrth.1to1.in$mmusculus_homolog_ds[i]
+  fl <- macMou$ensembl_gene_id %in% humMacMouOrth.1to1.in$mmulatta_homolog_ensembl_gene[i]
+  gene.cor[i,6] <- macMou$mmusculus_homolog_dn[fl]/macMou$mmusculus_homolog_ds[fl]
+  
+  gene.cor[i,7] <- humMacMouOrth.1to1.in$mmulatta_homolog_perc_id[i]/2 + humMacMouOrth.1to1.in$mmulatta_homolog_perc_id_r1[i]/2
+  gene.cor[i,8] <- humMacMouOrth.1to1.in$mmusculus_homolog_perc_id[i]/2 + humMacMouOrth.1to1.in$mmusculus_homolog_perc_id_r1[i]/2
+  gene.cor[i,9] <- macMou$mmusculus_homolog_perc_id[fl]/2 + macMou$mmusculus_homolog_perc_id_r1[fl]/2
+}
+```
+
+```{r fig.width=5, fig.height=10}
+hummac.cor <- data.frame(gene.cor[,c("HumMacCor", "HumMacdNdS", "HumMacSeq")])
+hummac.cor <- hummac.cor[!is.na(hummac.cor$HumMacCor) & !is.na(hummac.cor$HumMacdNdS) & !is.infinite(hummac.cor$HumMacdNdS),]
+hummac.cor$seqdensity <- get_density(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacSeq, y=HumMacCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+hummac.cor$dnsdensity <- get_density(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacdNdS, y=HumMacCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+
+```{r fig.width=5, fig.height=10}
+hummou.cor <- data.frame(gene.cor[,c("HumMouCor", "HumMoudNdS", "HumMouSeq")])
+hummou.cor <- hummou.cor[!is.na(hummou.cor$HumMouCor) & !is.na(hummou.cor$HumMoudNdS) & !is.infinite(hummou.cor$HumMoudNdS),]
+hummou.cor$seqdensity <- get_density(hummou.cor$HumMouSeq, hummou.cor$HumMouCor, n = 100)
+cortest <- cor.test(hummou.cor$HumMouSeq, hummou.cor$HumMouCor, method="spearman")
+p <- ggplot(hummou.cor) + geom_point(aes(x=HumMouSeq, y=HumMouCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+hummou.cor$dnsdensity <- get_density(hummou.cor$HumMoudNdS, hummou.cor$HumMouCor, n = 100)
+cortest <- cor.test(hummou.cor$HumMoudNdS, hummou.cor$HumMouCor, method="spearman")
+p <- ggplot(hummou.cor) + geom_point(aes(x=HumMoudNdS, y=HumMouCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+```{r fig.width=5, fig.height=10}
+macmou.cor <- data.frame(gene.cor[,c("MacMouCor", "MacMoudNdS", "MacMouSeq")])
+macmou.cor <- macmou.cor[!is.na(macmou.cor$MacMouCor) & !is.na(macmou.cor$MacMoudNdS) & !is.infinite(macmou.cor$MacMoudNdS),]
+macmou.cor$seqdensity <- get_density(macmou.cor$MacMouSeq, macmou.cor$MacMouCor, n = 100)
+cortest <- cor.test(macmou.cor$MacMouSeq, macmou.cor$MacMouCor, method="spearman")
+p <- ggplot(macmou.cor) + geom_point(aes(x=MacMouSeq, y=MacMouCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Monkey vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+macmou.cor$dnsdensity <- get_density(macmou.cor$MacMoudNdS, macmou.cor$MacMouCor, n = 100)
+cortest <- cor.test(macmou.cor$MacMoudNdS, macmou.cor$MacMouCor, method="spearman")
+p <- ggplot(macmou.cor) + geom_point(aes(x=MacMoudNdS, y=MacMouCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Monkey vs. Mouse","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+For HVGs in Hum
+```{r fig.width=5, fig.height=10}
+hummac.cor <- data.frame(gene.cor[hum.hvg.warped.15,c("HumMacCor", "HumMacdNdS", "HumMacSeq")])
+hummac.cor <- hummac.cor[!is.na(hummac.cor$HumMacCor) & !is.na(hummac.cor$HumMacdNdS) & !is.infinite(hummac.cor$HumMacdNdS),]
+hummac.cor$seqdensity <- get_density(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, n = 100)
+
+cortest <- cor.test(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacSeq, y=HumMacCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+hummac.cor$dnsdensity <- get_density(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacdNdS, y=HumMacCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+For HVGs in Macaque
+```{r fig.width=5, fig.height=10}
+rownames(gene.cor) <- humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name
+hummac.cor <- data.frame(gene.cor[mac.hvg.warped.15,c("HumMacCor", "HumMacdNdS", "HumMacSeq")])
+hummac.cor <- hummac.cor[!is.na(hummac.cor$HumMacCor) & !is.na(hummac.cor$HumMacdNdS) & !is.infinite(hummac.cor$HumMacdNdS),]
+hummac.cor$seqdensity <- get_density(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, n = 100)
+
+cortest <- cor.test(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacSeq, y=HumMacCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+hummac.cor$dnsdensity <- get_density(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacdNdS, y=HumMacCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+
+```{r fig.width=5, fig.height=10}
+rownames(gene.cor) <- humMacMouOrth.1to1.in$external_gene_name.x
+hummac.cor <- data.frame(gene.cor[humMacMouOrth.1to1.in$external_gene_name.x[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name %in% mac.hvg.warped.15 & humMacMouOrth.1to1.in$external_gene_name.x %in% hum.hvg.warped.15],c("HumMacCor", "HumMacdNdS", "HumMacSeq")])
+hummac.cor <- hummac.cor[!is.na(hummac.cor$HumMacCor) & !is.na(hummac.cor$HumMacdNdS) & !is.infinite(hummac.cor$HumMacdNdS),]
+hummac.cor$seqdensity <- get_density(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacSeq, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacSeq, y=HumMacCor, color = seqdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) )+ theme(legend.position="none") + xlab("Identity") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p1 <- ggMarginal(p, type="density")
+
+hummac.cor$dnsdensity <- get_density(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, n = 100)
+cortest <- cor.test(hummac.cor$HumMacdNdS, hummac.cor$HumMacCor, method="spearman")
+p <- ggplot(hummac.cor) + geom_point(aes(x=HumMacdNdS, y=HumMacCor, color = dnsdensity)) + scale_color_viridis()+ ggtitle(paste0("Human vs. Monkey","\ncor: ",round(cortest$estimate,3), " pvalue:", format(cortest$p.value,digits=4)) ) + theme(legend.position="none") + xlab("dN/dS") + ylab("Expression Conservability") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+p2 <- ggMarginal(p, type="density")
+
+
+grid.arrange(p1, p2, ncol=1)
+```
+
+Gene expression Conservability across 6 kmeans clusters. Human
+```{r}
+rownames(gene.cor) <- humMacMouOrth.1to1.in$external_gene_name.x
+hum.genes.mat <- data.frame(genes = names(hum.hvg.warped.15.kmeans$cluster), stages = hum.hvg.warped.15.kmeans$cluster)
+hum.genes.mat$expcon <- (gene.cor[as.character(hum.genes.mat$genes),"HumMacCor"] + gene.cor[as.character(hum.genes.mat$genes), "HumMouCor"])/2
+hum.genes.mat$expcon3 <- (gene.cor[as.character(hum.genes.mat$genes),"HumMacCor"] + gene.cor[as.character(hum.genes.mat$genes), "HumMouCor"] + gene.cor[as.character(hum.genes.mat$genes), "MacMouCor"])/3
+#hum.genes.mat$dnds <- (gene.cor[as.character(hum.genes.mat$genes), "HumMacdNdS"] + gene.cor[as.character(hum.genes.mat$genes), "HumMoudNdS"])/2
+```
+
+```{r}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+```
+
+```{r fig.width=6, fig.height=4}
+ggplot(hum.genes.mat,aes(x=as.factor(stages), y=expcon, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+```{r fig.width=6, fig.height=4}
+ggplot(hum.genes.mat,aes(x=as.factor(stages), y=expcon3, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+
+```{r fig.width=6, fig.height=4}
+#ggplot(hum.genes.mat,aes(x=as.factor(stages), y=dnds, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+
+Gene expression Conservability across 6 kmeans clusters.
+```{r}
+rownames(gene.cor) <- humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name
+mac.genes.mat <- data.frame(genes = names(mac.hvg.warped.15.kmeans$cluster), stages = mac.hvg.warped.15.kmeans$cluster)
+mac.genes.mat$expcon <- (gene.cor[as.character(mac.genes.mat$genes),"HumMacCor"] + gene.cor[as.character(mac.genes.mat$genes), "MacMouCor"])/2
+mac.genes.mat$expcon3 <- (gene.cor[as.character(mac.genes.mat$genes),"HumMacCor"] + gene.cor[as.character(mac.genes.mat$genes), "MacMouCor"] + gene.cor[as.character(mac.genes.mat$genes), "HumMouCor"])/3
+#mac.genes.mat$dnds <- (gene.cor[as.character(mac.genes.mat$genes), "HumMacdNdS"] + gene.cor[as.character(mac.genes.mat$genes), "MacMoudNdS"])/2
+```
+
+```{r fig.width=6, fig.height=4}
+ggplot(mac.genes.mat,aes(x=as.factor(stages), y=expcon, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+```{r fig.width=6, fig.height=4}
+ggplot(mac.genes.mat,aes(x=as.factor(stages), y=expcon3, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+
+```{r fig.width=6, fig.height=4}
+ggplot(mac.genes.mat,aes(x=as.factor(stages), y=dnds, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+
+Gene expression Conservability across 6 kmeans clusters.
+```{r}
+rownames(gene.cor) <- humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name
+mou.genes.mat <- data.frame(genes = names(mou.hvg.warped.15.kmeans$cluster), stages = mou.hvg.warped.15.kmeans$cluster)
+mou.genes.mat$expcon <- (gene.cor[as.character(mou.genes.mat$genes),"HumMouCor"] + gene.cor[as.character(mou.genes.mat$genes), "MacMouCor"])/2
+mou.genes.mat$expcon3 <- (gene.cor[as.character(mou.genes.mat$genes),"HumMouCor"] + gene.cor[as.character(mou.genes.mat$genes), "MacMouCor"] + gene.cor[as.character(mou.genes.mat$genes), "HumMacCor"])/3
+#mou.genes.mat$dnds <- (gene.cor[as.character(mou.genes.mat$genes), "HumMoudNdS"] + gene.cor[as.character(mou.genes.mat$genes), "MacMoudNdS"])/2
+```
+
+```{r fig.width=6, fig.height=4}
+ggplot(mou.genes.mat,aes(x=as.factor(stages), y=expcon, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+```{r fig.width=6, fig.height=4}
+ggplot(mou.genes.mat,aes(x=as.factor(stages), y=expcon3, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```
+
+```{r fig.width=6, fig.height=4}
+ggplot(mou.genes.mat,aes(x=as.factor(stages), y=dnds, fill=as.factor(stages))) + geom_violin() +scale_fill_manual(values=cols) +stat_summary(fun.y=median, geom="point", size=4, shape=18)
+```

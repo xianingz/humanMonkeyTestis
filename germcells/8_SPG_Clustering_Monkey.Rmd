@@ -1,0 +1,209 @@
+# SPG clustering for Monkey
+
+```{r}
+###. Raw counts data for monkey 
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mac_merged9_nospikeincells.Robj")
+dge.mac.raw <- dge@raw.data
+rm(dge)
+```
+
+###. Full dataset
+```{r}
+dge.mac.spg.full.raw <- dge.mac.raw[,spg.cca@cell.names[spg.cca@meta.data$species=="Monkey"]]
+saveRDS(dge.mac.spg.full.raw, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.full.raw.rds")
+```
+
+###. Only keep cluster 1-6 in merged SPG analysis
+```{r}
+dge.mac.spg.full.raw <- dge.mac.spg.full.raw[,spg.cca@cell.names[spg.cca@meta.data$species=="Monkey" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]]
+```
+
+```{r}
+dge.mac.spg.full <- CreateSeuratObject(raw.data = dge.mac.spg.full.raw)
+dge.mac.spg.full <- NormalizeData(object = dge.mac.spg.full, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+```
+```{r}
+dge.mac.spg.full <- FindVariableGenes(object = dge.mac.spg.full,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 0.8, x.high.cutoff = 3)
+batchs <- as.vector(sapply(colnames(dge.mac.spg.full.raw),function(x) strsplit(x,'_')[[1]][1]))
+batchs[batchs %in% c("Monkey1", "Monkey2")] = "Monkey1"
+batchs[batchs %in% c("Monkey3")] = "Monkey2"
+batchs[batchs %in% c("Monkey4", "Monkey5")] = "Monkey3"
+batchs[batchs %in% c("Monkey6", "Monkey7")] = "Monkey4"
+batchs[batchs %in% c("Monkey8", "Monkey9")] = "Monkey5"
+dge.mac.spg.full@meta.data$indi = batchs
+dge.mac.spg.full <- ScaleData(object = dge.mac.spg.full,vars.to.regress = c("nUMI"))
+dge.mac.spg.full <- RunTSNE(object = dge.mac.spg.full, pc.genes = dge.mac.spg.full@var.genes)
+dge.mac.spg.full <- RunUMAP(object = dge.mac.spg.full, pc.genes = dge.mac.spg.full@var.genes)
+```
+
+```{r fig.width=6,fig.height=4.5}
+PCAPlot(object = dge.mac.spg.full, dim.1 = 1, dim.2 = 2)
+PCAPlot(object = dge.mac.spg.full, dim.1 = 1, dim.2 = 2, group.by="indi")
+PCElbowPlot(object = dge.mac.spg.full)
+```
+
+```{r}
+table(dge.mac.spg.full@meta.data$indi)
+table(dge.mac.spg.full@meta.data$orig.ident)
+```
+
+```{r fig.width=6,fig.height=4.5}
+TSNEPlot(object = dge.mac.spg.full, group.by="indi")
+TSNEPlot(object = dge.mac.spg.full)
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE)
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, group.by="indi")
+```
+###. Plot batches
+Within individual difference
+```{r fig.width=6,fig.height=4.5}
+TSNEPlot(object = dge.mac.spg.full, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey1"])
+TSNEPlot(object = dge.mac.spg.full, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey2"])
+TSNEPlot(object = dge.mac.spg.full, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey3"])
+TSNEPlot(object = dge.mac.spg.full, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey4"])
+TSNEPlot(object = dge.mac.spg.full, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey5"])
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey1"])
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey2"])
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey3"])
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey4"])
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, cells.use = dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$indi=="Monkey5"])
+```
+
+Batch Correction
+```{r}
+batchs <- as.vector(sapply(colnames(dge.mac.spg.full.raw),function(x) strsplit(x,'_')[[1]][1]))
+
+dge.mac.spg.1 <- CreateSeuratObject(raw.data = dge.mac.spg.full.raw[,batchs %in% c("Monkey1", "Monkey2")])
+dge.mac.spg.1 <- NormalizeData(object = dge.mac.spg.1)
+dge.mac.spg.1 <- ScaleData(object = dge.mac.spg.1)
+dge.mac.spg.1 <- FindVariableGenes(object = dge.mac.spg.1, do.plot = FALSE)
+
+dge.mac.spg.2 <- CreateSeuratObject(raw.data = dge.mac.spg.full.raw[,batchs %in% c("Monkey3")])
+dge.mac.spg.2 <- NormalizeData(object = dge.mac.spg.2)
+dge.mac.spg.2 <- ScaleData(object = dge.mac.spg.2)
+dge.mac.spg.2 <- FindVariableGenes(object = dge.mac.spg.2, do.plot = FALSE)
+
+dge.mac.spg.3 <- CreateSeuratObject(raw.data = dge.mac.spg.full.raw[,batchs %in% c("Monkey4", "Monkey5")])
+dge.mac.spg.3 <- NormalizeData(object = dge.mac.spg.3)
+dge.mac.spg.3 <- ScaleData(object = dge.mac.spg.3)
+dge.mac.spg.3 <- FindVariableGenes(object = dge.mac.spg.3, do.plot = FALSE)
+
+dge.mac.spg.4 <- CreateSeuratObject(raw.data = dge.mac.spg.full.raw[,batchs %in% c("Monkey6", "Monkey7")])
+dge.mac.spg.4 <- NormalizeData(object = dge.mac.spg.4)
+dge.mac.spg.4 <- ScaleData(object = dge.mac.spg.4)
+dge.mac.spg.4 <- FindVariableGenes(object = dge.mac.spg.4, do.plot = FALSE)
+
+dge.mac.spg.5 <- CreateSeuratObject(raw.data = dge.mac.spg.full.raw[,batchs %in% c("Monkey8", "Monkey9")])
+dge.mac.spg.5 <- NormalizeData(object = dge.mac.spg.5)
+dge.mac.spg.5 <- ScaleData(object = dge.mac.spg.5)
+dge.mac.spg.5 <- FindVariableGenes(object = dge.mac.spg.5, do.plot = FALSE)
+```
+
+```{r}
+hvg.mac.spg.1 <- rownames(x = head(x = dge.mac.spg.1@hvg.info, n = 1000))
+hvg.mac.spg.2 <- rownames(x = head(x = dge.mac.spg.2@hvg.info, n = 1000))
+hvg.mac.spg.3 <- rownames(x = head(x = dge.mac.spg.3@hvg.info, n = 1000))
+hvg.mac.spg.4 <- rownames(x = head(x = dge.mac.spg.4@hvg.info, n = 1000))
+hvg.mac.spg.5 <- rownames(x = head(x = dge.mac.spg.5@hvg.info, n = 1000))
+hvg.union <- union(x = hvg.mac.spg.1, y = hvg.mac.spg.2)
+hvg.union <- union(x = hvg.union, y = hvg.mac.spg.3)
+hvg.union <- union(x = hvg.union, y = hvg.mac.spg.4)
+hvg.union <- union(x = hvg.union, y = hvg.mac.spg.5)
+length(hvg.union)
+```
+
+```{r}
+dge.mac.spg.1@meta.data[,"indi"] <- "Monkey1"
+dge.mac.spg.2@meta.data[,"indi"] <- "Monkey2"
+dge.mac.spg.3@meta.data[,"indi"] <- "Monkey3"
+dge.mac.spg.4@meta.data[,"indi"] <- "Monkey4"
+dge.mac.spg.5@meta.data[,"indi"] <- "Monkey5"
+```
+
+```{r}
+mac.spg.cca <- RunMultiCCA(object.list = list(dge.mac.spg.1, dge.mac.spg.2, dge.mac.spg.3,dge.mac.spg.4,dge.mac.spg.5),genes.use = hvg.union, num.ccs = 20)
+```
+
+```{r}
+MetageneBicorPlot(mac.spg.cca, grouping.var = "indi", dims.eval = 1:20, display.progress = TRUE)
+```
+
+```{r}
+mac.spg.cca <- AlignSubspace(object = mac.spg.cca, reduction.type = "cca", grouping.var = "indi", dims.align = 1:10)
+
+mac.spg.cca <- RunTSNE(object = mac.spg.cca, reduction.use = "cca.aligned", dims.use = 1:10)
+mac.spg.cca <- RunUMAP(object = mac.spg.cca, reduction.use = "cca.aligned", dims.use = 1:10)
+```
+
+```{r fig.width=6, fig.height=4.5}
+TSNEPlot(object = mac.spg.cca, do.return = TRUE, pt.size = 1, group.by = "indi")
+DimPlot(object = mac.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="indi")
+DimPlot(object = mac.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="indi")
+```
+
+```{r}
+mac.spg.cca <- FindClusters(object = mac.spg.cca, reduction.type = "cca.aligned", dims.use = 1:10, save.SNN = TRUE, resolution = 0.5)
+mac.spg.cca <- FindClusters(object = mac.spg.cca, reduction.type = "cca.aligned", dims.use = 1:10, save.SNN = TRUE, resolution = 0.6)
+mac.spg.cca <- FindClusters(object = mac.spg.cca, reduction.type = "cca.aligned", dims.use = 1:10, save.SNN = TRUE, resolution = 0.7)
+mac.spg.cca <- FindClusters(object = mac.spg.cca, reduction.type = "cca.aligned", dims.use = 1:10, save.SNN = TRUE, resolution = 0.8)
+```
+
+```{r fig.width=6, fig.height=4.5}
+TSNEPlot(object = mac.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.5")
+DimPlot(object = mac.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.5")
+DimPlot(object = mac.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.5")
+```
+
+```{r fig.width=6, fig.height=4.5}
+TSNEPlot(object = mac.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.6")
+DimPlot(object = mac.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.6")
+DimPlot(object = mac.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.6")
+```
+```{r fig.width=6, fig.height=4.5}
+TSNEPlot(object = mac.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.7")
+DimPlot(object = mac.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.7")
+DimPlot(object = mac.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.7")
+```
+
+```{r fig.width=6, fig.height=4.5}
+TSNEPlot(object = mac.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.8")
+DimPlot(object = mac.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.8")
+DimPlot(object = mac.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.8")
+```
+
+####. 1. res = 0.5
+```{r fig.width=6, fig.height=4.5}
+mac.spg.cca@meta.data$res.0.5.ord <- plyr::mapvalues(mac.spg.cca@meta.data$res.0.5, c(3,2,0,1),c(1,2,3,4))
+TSNEPlot(object = mac.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.5.ord")
+DimPlot(object = mac.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.5.ord")
+table(mac.spg.cca@meta.data$res.0.5.ord, spg.cca@meta.data[mac.spg.cca@cell.names,]$res.0.6.ord)
+```
+```{r}
+mac.spg.cen.0.5 <- c()
+clus <- unique(mac.spg.cca@meta.data$res.0.5.ord)
+for(i in clus){
+  cen <- apply(mac.spg.cca@data[,mac.spg.cca@meta.data$res.0.5.ord == i], 1, mean)
+  mac.spg.cen.0.5 <- cbind(mac.spg.cen.0.5, cen)
+}
+colnames(mac.spg.cen.0.5) <- clus
+```
+
+```{r fig.width=4.9,fig.height=4.5}
+mac.spg.cor.0.5 <- cor(mac.spg.cen.0.5, method="spearman")
+a = seriate(mac.spg.cor.0.5,method="BEA_TSP")
+ord = get_order(a)
+Heatmap(mac.spg.cor.0.5[ord,ord], cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+
+###. Marker genes
+```{r fig.width=10,fig.height=10}
+spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","FGFR3","DMRT1","DMRTB1","SOLH2H","SYCP3","SYCP1","SPO11","MEIOB","ACRV1","CATSPER1","CATSPER3","PRM1","PRM2","TNP1","TNP2","ZCWPW1","STRA8","GFRA1","PRDM9","SSX2","SSX3")
+spg.markers <- intersect(spg.markers, rownames(mac.spg.cca@raw.data))
+FeaturePlot(object = mac.spg.cca,features.plot = spg.markers,reduction.use = "umap",pt.size = 0.5,nCol = 4)
+VlnPlot(object = mac.spg.cca, features.plot = spg.markers, nCol = 4,group.by = "res.0.5.ord",point.size.use=0)
+```
+
+```{r}
+
+```

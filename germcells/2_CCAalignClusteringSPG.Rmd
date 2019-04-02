@@ -1,0 +1,352 @@
+# CCA alignment and clustering for SPGs from three species
+
+```{r}
+humMacMouOrth.1to1.in <- readRDS("../interdata/humMacMouOrth.1to1.in.Rds")
+dge.hum.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.raw.rds")
+dge.mac.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.raw.rds")
+dge.mou.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.raw.rds")
+library(Seurat)
+library(seriation)
+library(xlsx)
+```
+
+mouse seurat object
+```{r}
+dge.mou.spg.raw.sorted.named <- dge.mou.spg.raw[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,]
+rownames(dge.mou.spg.raw.sorted.named) = humMacMouOrth.1to1.in$external_gene_name.x
+dge.mou.spg <- CreateSeuratObject(raw.data = dge.mou.spg.raw.sorted.named)
+dge.mou.spg <- NormalizeData(object = dge.mou.spg, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.mou.spg <- ScaleData(object = dge.mou.spg,vars.to.regress = c("nUMI"))
+dge.mou.spg <- FindVariableGenes(object = dge.mou.spg,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 0)
+```
+
+##rename macaque
+```{r}
+dge.mac.spg.raw.renamed <- dge.mac.spg.raw
+rownames(dge.mac.spg.raw.renamed) <- rownames(dge.hum.spg.raw)
+dge.mac.spg.renamed <- CreateSeuratObject(raw.data = dge.mac.spg.raw.renamed)
+dge.mac.spg.renamed <- NormalizeData(object = dge.mac.spg.renamed, normalization.method = "LogNormalize", scale.factor = 10000)
+dge.mac.spg.renamed <- FindVariableGenes(object = dge.mac.spg.renamed,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 0)
+dge.mac.spg.renamed <- ScaleData(object = dge.mac.spg.renamed,vars.to.regress = c("nUMI"))
+```
+
+```{r}
+dge.hum.spg <- CreateSeuratObject(raw.data = dge.hum.spg.raw)
+dge.hum.spg <- NormalizeData(object = dge.hum.spg, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.hum.spg <- FindVariableGenes(object = dge.hum.spg,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 0)
+dge.hum.spg <- ScaleData(object = dge.hum.spg,vars.to.regress = c("nUMI"))
+```
+
+Highly variable genes
+```{r}
+hvg.spg.1 <- rownames(x = head(x = dge.hum.spg@hvg.info, n = 2000))
+hvg.spg.2 <- rownames(x = head(x = dge.mac.spg.renamed@hvg.info, n = 2000))
+hvg.spg.3 <- rownames(x = head(x = dge.mou.spg@hvg.info, n = 2000))
+hvg.union <- union(x = hvg.spg.1, y = hvg.spg.2)
+hvg.union <- union(x = hvg.union, y = hvg.spg.3)
+```
+
+```{r}
+dge.hum.spg@meta.data[,"species"] <- "Human"
+dge.mac.spg.renamed@meta.data[,"species"] <- "Monkey"
+dge.mou.spg@meta.data[,"species"] <- "Mouse"
+```
+
+```{r}
+spg.cca <- RunMultiCCA(object.list = list(dge.hum.spg, dge.mac.spg.renamed, dge.mou.spg),genes.use = hvg.union, num.ccs = 15, niter = 20)
+```
+
+
+```{r}
+MetageneBicorPlot(spg.cca, grouping.var = "species", dims.eval = 1:15, display.progress = TRUE)
+```
+
+
+```{r}
+#spg.cca <- CalcVarExpRatio(object = spg.cca, reduction.type = "pca", grouping.var = "species", dims.use = 1:8)
+spg.cca <- AlignSubspace(object = spg.cca, reduction.type = "cca", grouping.var = "species", dims.align = 1:8)
+
+spg.cca <- RunPCA(object = spg.cca, reduction.use = "cca.aligned", dims.use = 1:8)
+spg.cca <- RunTSNE(object = spg.cca, reduction.use = "cca.aligned", dims.use = 1:8)
+spg.cca <- RunUMAP(object = spg.cca, reduction.use = "cca.aligned", dims.use = 1:8)
+```
+
+```{r fig.width=5, fig.height=4}
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "species")
+DimPlot(object = spg.cca, reduction.use = "cca.aligned", pt.size = 1, group.by = "species")
+DimPlot(object = spg.cca, reduction.use = "umap", pt.size = 1, group.by = "species")
+```
+
+```{r}
+spg.cca <- FindClusters(object = spg.cca, reduction.type = "cca.aligned", dims.use = 1:8, save.SNN = TRUE, resolution = 0.6)
+```
+
+```{r fig.width=5, fig.height=4}
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.6")
+DimPlot(object = spg.cca, reduction.use = "umap", pt.size = 1, group.by = "res.0.6")
+DimPlot(object = spg.cca, reduction.use = "cca.aligned", pt.size = 1, group.by = "res.0.6")
+```
+
+change the label of the clusters
+```{r}
+spg.cca@meta.data$res.0.6.ord <- plyr::mapvalues(spg.cca@meta.data$res.0.6, c(4,2,0,1,5,3,7,6),c(1,2,3,4,5,6,7,8))
+```
+
+
+Cluster centroid for SPG
+```{r}
+spg.cen.0.6 <- c()
+clus <- unique(spg.cca@meta.data$res.0.6.ord)
+for(i in clus){
+  cen <- apply(spg.cca@data[,spg.cca@meta.data$res.0.6.ord == i], 1, mean)
+  spg.cen.0.6 <- cbind(spg.cen.0.6, cen)
+}
+colnames(spg.cen.0.6) <- clus
+```
+
+
+```{r fig.width=6,fig.height=5}
+#library(ComplexHeatmap)
+spg.cor.0.6 <- cor(spg.cen.0.6, method="spearman")
+a = seriate(spg.cor.0.6,method="BEA_TSP")
+ord = get_order(a)
+Heatmap(spg.cor.0.6[ord,ord], cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+```{r fig.width=5, fig.height=4}
+cols <- c("#477900",
+"#9378ff",
+"#01ce74",
+"#ff2b85",
+"#b0d266",
+"#733697",
+"#ff9c1d",
+"#0190c8",
+"#ffa19e")
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord", colors.use = cols)
+DimPlot(object = spg.cca, reduction.use = "umap", pt.size = 1, group.by = "res.0.6.ord", cols.use = cols)
+DimPlot(object = spg.cca, reduction.use = "cca.aligned", pt.size = 1, group.by = "res.0.6.ord", cols.use = cols)
+```
+Save spg.cca object
+```{r}
+saveRDS(spg.cca, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
+```
+
+
+
+##Read in mouse germ cell 12 clusters
+```{r}
+germ12clu <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/mouse/MouseAdultST24_12GermClusters_ClusterID.txt")
+mouse4clus <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/ClusterID_SPGcellsUMI1k_4clusters.txt",header = FALSE)
+```
+
+```{r}
+spg.cca@meta.data$mouseclus <- 0
+spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2==1]] = "1a"
+spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2==2]] = "1b"
+spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2==3]] = "1c"
+spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2==4]] = "1d"
+spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12clu$x == 2]] = 2
+spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12clu$x == 3]] = 3
+```
+
+```{r fig.width=6, fig.height=5}
+DimPlot(object = spg.cca, reduction.use = "tsne", pt.size = 1, group.by = "mouseclus", cols.use = c("grey","#49adad","#cb5b42","#67a64e","#8d70c9","#b69340","#c8588c"))
+```
+
+```{r}
+spg.cca <- SetIdent(spg.cca, ident.use = spg.cca@meta.data$res.0.6.ord)
+```
+
+
+##. Find Markers
+```{r}
+markers.9clus <- list()
+for(i in c(1:8)){
+  markers.9clus[[i]] <- FindConservedMarkers(spg.cca, ident.1 = i, grouping.var = "species",min.cells.group=2)
+}
+```
+
+Write to excel
+```{r}
+for(i in c(1:8)){
+if(i==1){
+  write.xlsx2(x = markers.9clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_8Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = markers.9clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_8Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
+```
+
+```{r}
+markers.sep.9clus <- list()
+for(i in c(1:8)){
+  markers.sep.9clus[[i]] <- FindMarkers(spg.cca, ident.1 = i, grouping.var = "species")
+}
+```
+
+```{r}
+for(i in c(1:8)){
+if(i==1){
+  write.xlsx2(x = markers.sep.9clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_8Clusters_Markers_all.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = markers.sep.9clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_8Clusters_Markers_all.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
+```
+
+##. SPG marker Plots
+```{r fig.width=10,fig.height=10}
+spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","FGFR3","DMRT1","DMRTB1","SOLH2H","SYCP3","SYCP1","SPO11","MEIOB","ACRV1","CATSPER1","CATSPER3","PRM1","PRM2","TNP1","TNP2","ZCWPW1","STRA8","GFRA1")
+spg.markers <- intersect(spg.markers, rownames(spg.cca@raw.data))
+FeaturePlot(object = spg.cca,features.plot = spg.markers,reduction.use = "tsne",pt.size = 0.5,nCol = 4)
+VlnPlot(object = spg.cca, features.plot = spg.markers,nCol = 4,group.by = "res.0.6.ord",point.size.use=0)
+```
+##. SPG marker RA receptor 
+```{r fig.width=10,fig.height=2.5}
+spg.markers <- c("RARA","RARB","RARG")
+spg.markers <- intersect(spg.markers, rownames(spg.cca@raw.data))
+FeaturePlot(object = spg.cca,features.plot = spg.markers,reduction.use = "tsne",pt.size = 0.5,nCol = 4)
+VlnPlot(object = spg.cca, features.plot = spg.markers,nCol = 3,group.by = "res.0.6.ord",point.size.use=0)
+```
+##. Cluster Centroids
+
+###. calculate SPG cluster centroid for each species
+```{r}
+##Cluster 9 removed because of doublets.
+spg.exp.all.data <- exp(spg.cca@data) - 1
+hum.spg.cen <- matrix(0,nrow=11023, ncol=8)
+mac.spg.cen <- matrix(0,nrow=11023, ncol=8)
+mou.spg.cen <- matrix(0,nrow=11023, ncol=8)
+for(i in c(1:8)){
+  hum.cells <- spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord == i & spg.cca@meta.data$species == "Human"]
+  mac.cells <- spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord == i & spg.cca@meta.data$species == "Monkey"]
+  mou.cells <- spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord == i & spg.cca@meta.data$species == "Mouse"]
+  hum.spg.cen[,i] <- apply(spg.exp.all.data[,hum.cells], 1, mean)
+  mac.spg.cen[,i] <- apply(spg.exp.all.data[,mac.cells], 1, mean)
+  mou.spg.cen[,i] <- apply(spg.exp.all.data[,mou.cells], 1, mean)
+}
+sum(humMacMouOrth.1to1.in$external_gene_name.x != rownames(spg.cca@data)) ##confirm gene names are ordered the same.
+rownames(hum.spg.cen) <- rownames(spg.cca@data)
+rownames(mac.spg.cen) <- humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name
+rownames(mou.spg.cen) <- humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name
+saveRDS(hum.spg.cen, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.spg.cen.rds")
+saveRDS(mac.spg.cen, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.spg.cen.rds")
+saveRDS(mou.spg.cen, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.spg.cen.rds")
+```
+
+###. Write to xlxs
+```{r}
+write.xlsx2(hum.spg.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/HumanSPGClusterCentroids.xlsx", sheetName = "Human", append = FALSE, row.names = TRUE)
+write.xlsx2(mac.spg.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MonkeySPGClusterCentroids.xlsx", sheetName = "Monkey", append = FALSE, row.names = TRUE)
+write.xlsx2(mou.spg.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGClusterCentroids.xlsx", sheetName = "Mouse", append = FALSE, row.names = TRUE)
+```
+
+Centroids for all genes for three species
+extract full mouse SPG dataset
+```{r}
+mou.raw <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mouse_data/xaa", header = TRUE,row.names = 1,sep="\t")
+#For all SPG cells
+spg.cellnames <- spg.cca@cell.names[spg.cca@meta.data$species=="Mouse"]
+selectcells <- colnames(mou.raw) %in% spg.cellnames
+dge.mou.spg.full.raw <- mou.raw[,selectcells]
+filelist <- paste0("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mouse_data/", list.files("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mouse_data"))
+for(i in filelist[2:length(filelist)]){
+print(i)
+mou.raw <- read.table(i, row.names = 1, sep="\t",header = FALSE)
+mou.raw <- mou.raw[,selectcells]
+colnames(mou.raw) <- colnames(dge.mou.spg.full.raw)
+dge.mou.spg.full.raw <- rbind(dge.mou.spg.full.raw, mou.raw)
+}
+rm(mou.raw)
+saveRDS(dge.mou.spg.full.raw, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.full.raw.rds")
+```
+
+```{r}
+spg.cca <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
+dge.hum.spg.full.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.full.raw.rds")
+dge.mac.spg.full.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.full.raw.rds")
+```
+
+```{r}
+##Cluster centroid for all genes.
+dge.mac.spg.full.norm <- apply(dge.mac.spg.full.raw,2,function(x) x/sum(x)*10000)
+dge.hum.spg.full.norm <- apply(dge.hum.spg.full.raw,2,function(x) x/sum(x)*10000)
+dge.mou.spg.full.norm <- apply(dge.mou.spg.full.raw,2,function(x) x/sum(x)*10000)
+hum.spg.all.cen <- matrix(0,nrow=dim(dge.hum.spg.full.norm)[1], ncol=8)
+mac.spg.all.cen <- matrix(0,nrow=dim(dge.mac.spg.full.norm)[1], ncol=8)
+mou.spg.all.cen <- matrix(0,nrow=dim(dge.mou.spg.full.norm)[1], ncol=8)
+#mou.spg.all.cen <- matrix(0,nrow=11029, ncol=8)
+for(i in c(1:8)){
+  hum.cells <- spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord == i & spg.cca@meta.data$species == "Human"]
+  mac.cells <- spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord == i & spg.cca@meta.data$species == "Monkey"]
+  mou.cells <- spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord == i & spg.cca@meta.data$species == "Mouse"]
+  hum.spg.all.cen[,i] <- apply(dge.hum.spg.full.norm[,hum.cells], 1, mean)
+  mac.spg.all.cen[,i] <- apply(dge.mac.spg.full.norm[,mac.cells], 1, mean)
+  mou.spg.all.cen[,i] <- apply(dge.mou.spg.full.norm[,mou.cells], 1, mean)
+}
+rownames(hum.spg.all.cen) <- rownames(dge.hum.spg.full.raw)
+rownames(mac.spg.all.cen) <- rownames(dge.mac.spg.full.raw)
+rownames(mou.spg.all.cen) <- rownames(dge.mou.spg.full.raw)
+saveRDS(hum.spg.all.cen, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata//hum.spg.all.cen.rds")
+saveRDS(mac.spg.all.cen, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata//mac.spg.all.cen.rds")
+saveRDS(mou.spg.all.cen, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata//mou.spg.all.cen.rds")
+```
+
+##Write to xlxs
+```{r}
+write.xlsx2(hum.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/HumanSPGCluster_AllGene_Centroids.xlsx", sheetName = "Human", append = FALSE, row.names = TRUE)
+write.xlsx2(mac.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MonkeySPGCluster_AllGene_Centroids.xlsx", sheetName = "Monkey", append = FALSE, row.names = TRUE)
+write.xlsx2(mou.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.xlsx", sheetName = "Mouse", append = FALSE, row.names = TRUE)
+```
+
+Centroid rank correlation for three species
+```{r fig.width=5, fig.height=4.5}
+hum.spg.cor <- cor(hum.spg.all.cen[,c(1:6)], method="spearman")
+Heatmap(hum.spg.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+```{r fig.width=5, fig.height=4.5}
+mac.spg.cor <- cor(mac.spg.all.cen[,c(1:6)], method="spearman")
+Heatmap(mac.spg.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+```{r fig.width=5, fig.height=4.5}
+mou.spg.cor <- cor(mou.spg.all.cen[,c(1:6)], method="spearman")
+Heatmap(mou.spg.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+##. Plot all the clusters in three species
+```{r fig.width=20, fig.height=9}
+plist <- list()
+for(i in c(1:8)){
+  spg.cca@meta.data$var <- (spg.cca@meta.data$res.0.6.ord==i & spg.cca@meta.data$species=="Human")*i
+  p <- TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "var", colors.use = c("grey",cols[i]), plot.order = c(i,"0"))
+  plist[[i]] = p
+}
+do.call("grid.arrange", c(plist, ncol=4))
+```
+```{r fig.width=20, fig.height=9}
+plist <- list()
+for(i in c(1:8)){
+  spg.cca@meta.data$var <- (spg.cca@meta.data$res.0.6.ord==i & spg.cca@meta.data$species=="Monkey")*i
+  p <- TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "var", colors.use = c("grey",cols[i]), plot.order = c(i,"0"))
+  plist[[i]] = p
+}
+do.call("grid.arrange", c(plist, ncol=4))
+```
+
+
+
+
+
+
+```{r fig.width=20, fig.height=9}
+plist <- list()
+for(i in c(1:8)){
+  spg.cca@meta.data$var <- (spg.cca@meta.data$res.0.6.ord==i & spg.cca@meta.data$species=="Mouse")*i
+  p <- TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "var", colors.use = c("grey",cols[i]), plot.order = c(i,"0"))
+  plist[[i]] = p
+}
+do.call("grid.arrange", c(plist, ncol=4))
+```

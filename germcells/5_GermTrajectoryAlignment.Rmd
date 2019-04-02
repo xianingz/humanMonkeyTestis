@@ -1,0 +1,873 @@
+# Comparison of germ cell developmental trajectory across Human, Monkey and Mouse
+
+```{r}
+library(monocle)
+dge.hum.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.raw2.rds")
+dge.mac.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.raw2.rds")
+dge.mou.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.raw2.rds")
+humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
+```
+
+##Read in pre-runned monocle data
+```{r}
+load("~/storage/HumanMacaqueMouseCompAnaysis/interdata/backup/hummou_monocle.RData")
+load("~/storage/HumanMacaqueMouseCompAnaysis/interdata/backup/mac.monocle.RData")
+saveRDS(list(mou.cds=mou.cds, mou.cds.deg=mou.cds.deg, mou.ording_genes=mou.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.monocle.rds")
+saveRDS(list(mac.cds=mac.cds, mac.cds.deg=mac.cds.deg, mac.ording_genes=mac.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.monocle.rds")
+saveRDS(list(mou.cds=mou.cds, mou.cds.deg=mou.cds.deg, mou.ording_genes=mou.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.monocle.rds")
+saveRDS(list(hum.cds=hum.cds, hum.cds.deg=hum.cds.deg, hum.ording_genes=hum.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.monocle.rds")
+```
+
+```{r}
+mou.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.monocle.rds")
+mac.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.monocle.rds")
+```
+
+```{r}
+mou.cds <- mou.monocle$mou.cds
+mou.cds.deg <- mou.monocle$mou.cds.deg
+mou.ording_genes <- mou.monocle$mou.ording_genes
+rm(mou.monocle)
+
+mac.cds <- mac.monocle$mac.cds
+mac.cds.deg <- mac.monocle$mac.cds.deg
+mac.ording_genes <- mac.monocle$mac.ording_genes
+rm(mac.monocle)
+```
+
+
+##. Full dataset trajectory/pseudo-time inference using Monocle
+```{r}
+#Human
+hum.cds <- newCellDataSet(as.matrix(dge.hum.raw2))
+hum.cds <- estimateSizeFactors(hum.cds)
+hum.cds <- estimateDispersions(hum.cds)
+disp_table <- dispersionTable(hum.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+hum.cds <- setOrderingFilter(hum.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(hum.cds)
+hum.cds <- reduceDimension(hum.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+hum.cds <- clusterCells(hum.cds, num_clusters = 10)
+plot_cell_clusters(hum.cds)
+pData(hum.cds)$Cluster <- factor(pData(hum.cds)$Cluster)
+hum.cds.deg <- differentialGeneTest(hum.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+hum.ording_genes <- rownames(hum.cds.deg)[order(hum.cds.deg$qval)][1:2000]
+hum.cds <- setOrderingFilter(hum.cds, ordering_genes = c(hum.ording_genes))
+hum.cds <- reduceDimension(hum.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+hum.cds <- orderCells(hum.cds)
+saveRDS(list(hum.cds,hum.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.cds.rds")
+plot_cell_trajectory(hum.cds, color_by = "Pseudotime")
+```
+
+Chek with previous result
+```{r}
+hum.cds.comp <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/rds_data/hum.cds.rds")[[1]]
+> sum(rownames(hum.cds.comp@phenoData@data) %in% rownames(hum.cds@phenoData@data))
+[1] 4281
+> length(rownames(hum.cds.comp@phenoData@data))
+[1] 4287
+> length(rownames(hum.cds@phenoData@data))
+[1] 4281
+> sum(rownames(hum.cds.comp@featureData@data)[hum.cds.comp@featureData@data$use_for_ordering] %in% rownames(hum.cds@featureData@data)[hum.cds@featureData@data$use_for_ordering])
+[1] 1924
+```
+
+
+```{r}
+#Monkey
+mac.cds <- newCellDataSet(as.matrix(dge.mac.raw2))
+mac.cds <- estimateSizeFactors(mac.cds)
+mac.cds <- estimateDispersions(mac.cds)
+disp_table <- dispersionTable(mac.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+mac.cds <- setOrderingFilter(mac.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(mac.cds)
+mac.cds <- reduceDimension(mac.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+mac.cds <- clusterCells(mac.cds, num_clusters = 10)
+plot_cell_clusters(mac.cds)
+pData(mac.cds)$Cluster <- factor(pData(mac.cds)$Cluster)
+mac.cds.deg <- differentialGeneTest(mac.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+mac.ording_genes <- rownames(mac.cds.deg)[order(mac.cds.deg$qval)][1:2000]
+mac.cds <- setOrderingFilter(mac.cds, ordering_genes = c(mac.ording_genes))
+mac.cds <- reduceDimension(mac.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+mac.cds <- orderCells(mac.cds)
+saveRDS(list(mac.cds, mac.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.cds.rds")
+plot_cell_trajectory(mac.cds, color_by = "Pseudotime")
+```
+
+```{r}
+#Mouse
+mou.cds <- newCellDataSet(as.matrix(dge.mou.raw2))
+mou.cds <- estimateSizeFactors(mou.cds)
+mou.cds <- estimateDispersions(mou.cds)
+disp_table <- dispersionTable(mou.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+mou.cds <- setOrderingFilter(mou.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(mou.cds)
+mou.cds <- reduceDimension(mou.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+mou.cds <- clusterCells(mou.cds, num_clusters = 10)
+plot_cell_clusters(mou.cds)
+pData(mou.cds)$Cluster <- factor(pData(mou.cds)$Cluster)
+mou.cds.deg <- differentialGeneTest(mou.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+mou.ording_genes <- rownames(mou.cds.deg)[order(mou.cds.deg$qval)][1:2000]
+mou.cds <- setOrderingFilter(mou.cds, ordering_genes = c(mou.ording_genes))
+mou.cds <- reduceDimension(mou.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+mou.cds <- orderCells(mou.cds)
+saveRDS(list(mou.cds,mou.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.cds.rds")
+plot_cell_trajectory(mou.cds, color_by = "Pseudotime")
+```
+
+
+```{r}
+plot_cell_trajectory(hum.cds, color_by = "Pseudotime")
+plot_cell_trajectory(mac.cds, color_by = "Pseudotime")
+plot_cell_trajectory(mou.cds, color_by = "Pseudotime")
+```
+
+
+```{r fig.width=5,fig.height=4}
+plot_genes_in_pseudotime(mac.cds["HORMAD1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(hum.cds["HORMAD1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Hormad1",], color_by = "Pseudotime")
+
+plot_genes_in_pseudotime(hum.cds["PIWIL1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mac.cds["PIWIL1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Piwil1",], color_by = "Pseudotime")
+
+plot_genes_in_pseudotime(hum.cds["ACRV1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mac.cds["ACRV1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Acrv1",], color_by = "Pseudotime")
+```
+
+```{r}
+dge.hum.norm <- apply(dge.hum.raw2,2,function(x) x/sum(x)*1e4)
+dge.mac.norm <- apply(dge.mac.raw2,2,function(x) x/sum(x)*1e4)
+dge.mou.norm <- apply(dge.mou.raw2,2,function(x) x/sum(x)*1e4)
+```
+
+Intersection of genes
+```{r}
+int.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.ording_genes,]
+int.genes <- int.genes[int.genes$mmulatta_homolog_associated_gene_name %in% mac.ording_genes,]
+int.genes <- int.genes[int.genes$mmusculus_homolog_associated_gene_name %in% mou.ording_genes,]
+```
+
+```{r}
+dge.hum.norm.int <- dge.hum.norm[int.genes$external_gene_name.x,]
+dge.mac.norm.int <- dge.mac.norm[int.genes$mmulatta_homolog_associated_gene_name,]
+dge.mou.norm.int <- dge.mou.norm[int.genes$mmusculus_homolog_associated_gene_name,]
+dge.hum.lg <- log(dge.hum.norm.int + 1)
+dge.mac.lg <- log(dge.mac.norm.int + 1)
+dge.mou.lg <- log(dge.mou.norm.int + 1)
+```
+
+### Run cellAlign
+```{r}
+library(cellAlign)
+library(ComplexHeatmap)
+```
+
+```{r}
+numPts = 200
+hum.traj <- as.numeric(hum.cds$Pseudotime)
+hum.traj <- hum.traj/max(hum.traj)
+names(hum.traj) <- colnames(dge.hum.lg)
+align.hum <- cellAlign::interWeights(expDataBatch = dge.hum.lg, trajCond = hum.traj, winSz = 0.1, numPts = numPts)
+
+mac.traj <- as.numeric(mac.cds$Pseudotime)
+mac.traj <- mac.traj/max(mac.traj)
+names(mac.traj) <- colnames(dge.mac.lg)
+align.mac <- cellAlign::interWeights(expDataBatch = dge.mac.lg, trajCond = mac.traj, winSz = 0.1, numPts = numPts)
+
+mou.traj <- as.numeric(mou.cds$Pseudotime)
+mou.traj <- mou.traj/max(mou.traj)
+names(mou.traj) <- colnames(dge.mou.lg)
+align.mou <- cellAlign::interWeights(expDataBatch = dge.mou.lg, trajCond = mou.traj, winSz = 0.1, numPts = numPts)
+```
+
+```{r}
+align.hum.scaled <- scaleInterpolate(align.hum)
+align.mac.scaled <- scaleInterpolate(align.mac)
+align.mou.scaled <- scaleInterpolate(align.mou)
+```
+
+Align: map monkey to human
+```{r}
+hummac.align <- globalAlign(align.mac.scaled$scaledData, 
+                     align.hum.scaled$scaledData, 
+                     scores = list(query = align.mac.scaled$traj, 
+                                   ref = align.hum.scaled$traj), 
+                     sigCalc = F, numPerm = 20)
+plotAlign(hummac.align)
+hummac.mapping <- mapRealDataGlobal(hummac.align, intTrajQuery = align.mac.scaled$traj, realTrajQuery = mac.traj, intTrajRef = align.hum.scaled$traj, realTrajRef = hum.traj)
+plotMapping(hummac.mapping)
+```
+
+Align: map mouse to monkey
+```{r}
+macmou.align <- globalAlign(align.mou.scaled$scaledData, align.mac.scaled$scaledData, scores = list(query = align.mou.scaled$traj, ref = align.mac.scaled$traj), sigCalc = F, numPerm = 20)
+plotAlign(macmou.align)
+macmou.mapping <- mapRealDataGlobal(macmou.align, intTrajQuery = align.mou.scaled$traj, realTrajQuery = mou.traj, intTrajRef = align.mac.scaled$traj, realTrajRef = mac.traj)
+plotMapping(macmou.mapping)
+```
+
+Align: map mouse to human
+```{r}
+hummou.align <- globalAlign(align.mou.scaled$scaledData, align.hum.scaled$scaledData, scores = list(query = align.mou.scaled$traj, ref = align.hum.scaled$traj), sigCalc = F, numPerm = 20)
+plotAlign(hummou.align)
+hummou.mapping <- mapRealDataGlobal(hummou.align, intTrajQuery = align.mou.scaled$traj, realTrajQuery = mou.traj, intTrajRef = align.hum.scaled$traj, realTrajRef = hum.traj)
+plotMapping(hummou.mapping)
+```
+
+###. Monkey vs Human, Human Ref
+```{r}
+hum.metanodes <- unique(hummac.mapping$metaNodesPt$metaNodeRef)
+hum.ps.mat.humref <- matrix(0, nrow = length(hum.traj), ncol = length(hum.metanodes))
+colnames(hum.ps.mat.humref) <- hum.metanodes
+rownames(hum.ps.mat.humref) <- names(hum.traj)
+for(i in hum.metanodes){
+  hum.ps.mat.humref[unlist(hummac.mapping$refAssign[i]),i] = 1
+}
+hum.ps.len.humref <- apply(hum.ps.mat.humref,2,sum)
+
+mac.ps.mat.humref <- matrix(0, nrow = length(mac.traj), ncol = length(hum.metanodes))
+colnames(mac.ps.mat.humref) <- hum.metanodes
+rownames(mac.ps.mat.humref) <- names(mac.traj)
+for(i in hum.metanodes){
+  mac.metanodes <- hummac.mapping$metaNodesPt$metaNodeQuery[hummac.mapping$metaNodesPt$metaNodeRef == i]
+  for(j in mac.metanodes){
+    mac.ps.mat.humref[unlist(hummac.mapping$queryAssign[j]),i] = 1
+  }
+}
+mac.ps.len.humref <- apply(mac.ps.mat.humref,2,sum)
+```
+
+###. Human Ref
+```{r}
+hum.metanodes <- unique(hummou.mapping$metaNodesPt$metaNodeRef)
+#mou.ps.len <- lapply(mapping$refAssign, function(x) length(x))
+hum.ps.mat.humref <- matrix(0, nrow = length(hum.traj), ncol = length(hum.metanodes))
+colnames(hum.ps.mat.humref) <- hum.metanodes
+rownames(hum.ps.mat.humref) <- names(hum.traj)
+for(i in hum.metanodes){
+  hum.ps.mat.humref[unlist(hummou.mapping$refAssign[i]),i] = 1
+}
+hum.ps.len.humref <- apply(hum.ps.mat.humref,2,sum)
+
+mou.ps.mat.humref <- matrix(0, nrow = length(mou.traj), ncol = length(hum.metanodes))
+colnames(mou.ps.mat.humref) <- hum.metanodes
+rownames(mou.ps.mat.humref) <- names(mou.traj)
+for(i in hum.metanodes){
+  mou.metanodes <- hummou.mapping$metaNodesPt$metaNodeQuery[hummou.mapping$metaNodesPt$metaNodeRef == i]
+  for(j in mou.metanodes){
+    mou.ps.mat.humref[unlist(hummou.mapping$queryAssign[j]),i] = 1
+  }
+}
+mou.ps.len.humref <- apply(mou.ps.mat.humref,2,sum)
+```
+
+```{r}
+tran189t19 <- matrix(0, nrow=189, ncol=19)
+for(i in c(1:19)){
+  if(10*i < 189){
+    tran189t19[(10*(i-1)+1):(10*i),i] = rep(1,10)
+  }else{
+    tran189t19[(10*(i-1)+1):189,i] = rep(1, 9)
+  }
+}
+tran189t19 <- apply(tran189t19,2,function(x) x/sum(x))
+```
+
+```{r}
+tranto19 <- function(expdata, data){
+  data.19 <- data %*% tran189t19
+  data.19[data.19 > 0]=1
+  data.19 <- apply(data.19, 2, function(x) x/sum(x))
+  return(expdata %*% data.19)
+}
+```
+
+## Human
+```{r}
+#pc means per cell
+mac.warped.exp <- tranto19(dge.mac.norm, mac.ps.mat.humref)
+hum.warped.exp <- tranto19(dge.hum.norm, hum.ps.mat.humref)
+mou.warped.exp <- tranto19(dge.mou.norm, mou.ps.mat.humref)
+mou.warped.exp <- mou.warped.exp[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,]
+```
+
+Rank correlation between species
+```{r fig.width=10, fig.height=10}
+##three species rank correlation
+merge.centroids <- cbind(hum.warped.exp, mac.warped.exp, mou.warped.exp)
+colnames(merge.centroids) <- c(paste0("H",c(1:19)),paste0("M",c(1:19)),paste0("m",c(1:19)))
+cen.cor <- cor(log(merge.centroids[int.genes$external_gene_name.x,]+1), method = "spearman")
+Heatmap(cen.cor, cluster_columns = FALSE, cluster_rows = FALSE)
+```
+Check the number of cells in each block
+```{r}
+a <- hum.ps.mat.humref %*% tran189t19
+apply(a,2,function(x) sum(x>0))
+# [1] 269 361 128 105  12 525 182 108 188 133 123 198 179  90 108  54  78 745 695
+```
+
+Try 15 clusters
+```{r}
+tran189t15 <- matrix(0, nrow=189, ncol=15)
+for(i in c(1:15)){
+  if(13*i < 189){
+    tran189t15[(13*(i-1)+1):(13*i),i] = rep(1,13)
+  }else{
+    tran189t15[(13*(i-1)+1):189,i] = rep(1, 7)
+  }
+}
+tran189t15 <- apply(tran189t15,2,function(x) x/sum(x))
+```
+
+```{r}
+tranto15 <- function(expdata, data){
+  data.15 <- data %*% tran189t15
+  data.15[data.15 > 0]=1
+  data.15 <- apply(data.15, 2, function(x) x/sum(x))
+  return(expdata %*% data.15)
+}
+```
+
+## Human
+```{r}
+#pc means per cell
+mac.warped.15.exp <- tranto15(dge.mac.norm, mac.ps.mat.humref)
+hum.warped.15.exp <- tranto15(dge.hum.norm, hum.ps.mat.humref)
+mou.warped.15.exp <- tranto15(dge.mou.norm, mou.ps.mat.humref)
+mou.warped.15.exp <- mou.warped.15.exp[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,]
+```
+
+Rank correlation between species
+```{r fig.width=10, fig.height=10}
+##three species rank correlation
+merge.centroids <- cbind(hum.warped.15.exp, mac.warped.15.exp, mou.warped.15.exp)
+colnames(merge.centroids) <- c(paste0("H",c(1:15)),paste0("M",c(1:15)),paste0("m",c(1:15)))
+cen.cor <- cor(log(merge.centroids[int.genes$external_gene_name.x,]+1), method = "spearman")
+Heatmap(cen.cor, cluster_columns = FALSE, cluster_rows = FALSE)
+```
+
+## kmeans clustering (add SPG cells in)
+```{r}
+dge.hum.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.raw.rds")
+dge.mac.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.raw.rds")
+dge.mou.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.raw.rds")
+```
+
+```{r}
+dge.hum.spg.norm <- apply(dge.hum.spg.raw,2,function(x) x/sum(x)*1e4)
+dge.mac.spg.norm <- apply(dge.mac.spg.raw,2,function(x) x/sum(x)*1e4)
+dge.mou.spg.norm <- apply(dge.mou.spg.raw,2,function(x) x/sum(x)*1e4)
+```
+
+```{r}
+hum.spg.cen <- apply(dge.hum.spg.norm,1,mean)
+mac.spg.cen <- apply(dge.mac.spg.norm,1,mean)
+mou.spg.cen <- apply(dge.mou.spg.norm,1,mean)
+names(hum.spg.cen) <- rownames(dge.hum.spg.norm)
+names(mac.spg.cen) <- rownames(dge.mac.spg.norm)
+names(mou.spg.cen) <- rownames(dge.mou.spg.norm)
+mou.spg.cen <- mou.spg.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name]
+```
+
+####add spg centroid in.
+```{r}
+hum.warped.15.exp.lg <- log(cbind(hum.spg.cen, hum.warped.15.exp)+1)
+mac.warped.15.exp.lg <- log(cbind(mac.spg.cen, mac.warped.15.exp)+1)
+mou.warped.15.exp.lg <- log(cbind(mou.spg.cen, mou.warped.15.exp)+1)
+```
+
+```{r}
+hum.warped.15.lg.std <- t(apply(hum.warped.15.exp.lg,1,function(x) (x-mean(x))/sd(x)))
+mac.warped.15.lg.std <- t(apply(mac.warped.15.exp.lg,1,function(x) (x-mean(x))/sd(x)))
+mou.warped.15.lg.std <- t(apply(mou.warped.15.exp.lg,1,function(x) (x-mean(x))/sd(x)))
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(hum.warped.15.exp.lg,1,mean)
+g.var <- apply(hum.warped.15.exp.lg,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+hum.hvg.warped.15 <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
+abline(h=0.1)
+abline(v=0.2)
+length(hum.hvg.warped.15)
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mac.warped.15.exp.lg,1,mean)
+g.var <- apply(mac.warped.15.exp.lg,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+mac.hvg.warped.15 <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
+abline(h=0.1)
+abline(v=0.2)
+length(mac.hvg.warped.15)
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mou.warped.15.exp.lg,1,mean)
+g.var <- apply(mou.warped.15.exp.lg,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+abline(h=0.1)
+abline(v=0.2)
+mou.hvg.warped.15 <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
+length(mou.hvg.warped.15)
+```
+
+```{r}
+set.seed(100)
+colnames(hum.warped.15.lg.std) <- c(1:16)
+hum.hvg.warped.15.kmeans <- kmeans(hum.warped.15.lg.std[hum.hvg.warped.15, ],6)
+table(hum.hvg.warped.15.kmeans$cluster)
+for(i in c(1:6)){
+dr = Heatmap(hum.warped.15.lg.std[names(which(hum.hvg.warped.15.kmeans$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+```{r}
+set.seed(100)
+colnames(mac.warped.15.lg.std) <- c(1:16)
+mac.hvg.warped.15.kmeans <- kmeans(mac.warped.15.lg.std[mac.hvg.warped.15, ],6)
+table(mac.hvg.warped.15.kmeans$cluster)
+for(i in c(1:6)){
+dr = Heatmap(mac.warped.15.lg.std[names(which(mac.hvg.warped.15.kmeans$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+```{r}
+set.seed(100)
+colnames(mou.warped.15.lg.std) <- c(1:16)
+mou.hvg.warped.15.kmeans <- kmeans(mou.warped.15.lg.std[mou.hvg.warped.15, ],6)
+table(mou.hvg.warped.15.kmeans$cluster)
+for(i in c(1:6)){
+dr = Heatmap(mou.warped.15.lg.std[names(which(mou.hvg.warped.15.kmeans$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+
+```{r}
+set.seed(100)
+colnames(hum.warped.15.lg.std) <- c(1:16)
+hum.hvg.warped.15.kmeans.7 <- kmeans(hum.warped.15.lg.std[hum.hvg.warped.15, ],7)
+table(hum.hvg.warped.15.kmeans.7$cluster)
+for(i in c(1:7)){
+dr = Heatmap(hum.warped.15.lg.std[names(which(hum.hvg.warped.15.kmeans.7$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+```{r}
+set.seed(100)
+colnames(mac.warped.15.lg.std) <- c(1:16)
+mac.hvg.warped.15.kmeans.7 <- kmeans(mac.warped.15.lg.std[mac.hvg.warped.15, ],7)
+table(mac.hvg.warped.15.kmeans.7$cluster)
+for(i in c(1:7)){
+dr = Heatmap(mac.warped.15.lg.std[names(which(mac.hvg.warped.15.kmeans.7$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+```{r}
+set.seed(100)
+colnames(mou.warped.15.lg.std) <- c(1:16)
+mou.hvg.warped.15.kmeans.7 <- kmeans(mou.warped.15.lg.std[mou.hvg.warped.15, ],7)
+table(mou.hvg.warped.15.kmeans.7$cluster)
+for(i in c(1:7)){
+dr = Heatmap(mou.warped.15.lg.std[names(which(mou.hvg.warped.15.kmeans.7$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+##.Connecting plot
+```{r}
+hum.hvg.warped.kmeans.genes <- c()
+stages <- c(2,5,4,6,3,1)
+for(i in c(1:6)){
+  hum.hvg.warped.kmeans.genes <- rbind(hum.hvg.warped.kmeans.genes, data.frame(genes = names(which(hum.hvg.warped.15.kmeans$cluster==stages[i])), stages=rep(i, sum(hum.hvg.warped.15.kmeans$cluster==stages[i]))))
+}
+
+mac.hvg.warped.kmeans.genes <- c()
+stages <- c(1,5,2,4,6,3)
+for(i in c(1:6)){
+  mac.hvg.warped.kmeans.genes <- rbind(mac.hvg.warped.kmeans.genes, data.frame(genes = names(which(mac.hvg.warped.15.kmeans$cluster==stages[i])), stages=rep(i, sum(mac.hvg.warped.15.kmeans$cluster==stages[i]))))
+}
+
+mou.hvg.warped.kmeans.genes <- c()
+stages <- c(2,3,6,5,4,1)
+for(i in c(1:6)){
+  mou.hvg.warped.kmeans.genes <- rbind(mou.hvg.warped.kmeans.genes, data.frame(genes = names(which(mou.hvg.warped.15.kmeans$cluster==stages[i])), stages=rep(i, sum(mou.hvg.warped.15.kmeans$cluster==stages[i]))))
+}
+```
+
+
+##human Mac
+#Connector lines
+```{r}
+kmeans.hum.mac.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.hvg.warped.15,]
+kmeans.hum.mac.genes <- kmeans.hum.mac.genes[kmeans.hum.mac.genes$mmulatta_homolog_associated_gene_name %in% mac.hvg.warped.15,]
+```
+
+```{r}
+pos.hum.mac <- c()
+for(i in c(1:dim(kmeans.hum.mac.genes)[1])){
+  hum.gen <- kmeans.hum.mac.genes$external_gene_name.x[i]
+  mac.gen <- kmeans.hum.mac.genes$mmulatta_homolog_associated_gene_name[i]
+  x = which(hum.hvg.warped.kmeans.genes$genes == hum.gen)
+  y = which(mac.hvg.warped.kmeans.genes$genes == mac.gen)
+  pos.hum.mac <- rbind(pos.hum.mac,c(x,y,hum.gen, mac.gen))
+}
+pos.hum.mac <- data.matrix(pos.hum.mac)
+colnames(pos.hum.mac) = c("hum.pos","mac.pos", "hum.gen","mac.gen")
+```
+
+Sort within each cluster
+```{r}
+
+rownames(pos.hum.mac) <- pos.hum.mac[,"hum.gen"]
+hum.kmeans.genes.ord <- hum.hvg.warped.kmeans.genes
+for(i in c(1:6)){
+  genes <- hum.hvg.warped.kmeans.genes$genes[hum.hvg.warped.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mac[,"hum.gen"]])
+  genes <- pos.hum.mac[,"hum.gen"][pos.hum.mac[,"hum.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mac[genes,"mac.pos"]))]
+  hum.kmeans.genes.ord$genes[hum.hvg.warped.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+```{r}
+rownames(pos.hum.mac) <- pos.hum.mac[,"mac.gen"]
+mac.kmeans.genes.ord <- mac.hvg.warped.kmeans.genes
+for(i in c(1:6)){
+  genes <- mac.hvg.warped.kmeans.genes$genes[mac.hvg.warped.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mac[,"mac.gen"]])
+  genes <- pos.hum.mac[,"mac.gen"][pos.hum.mac[,"mac.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mac[genes,"hum.pos"]))]
+  mac.kmeans.genes.ord$genes[mac.hvg.warped.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(kmeans.hum.mac.genes)[1])){
+#for(i in c(1:10)){ 
+  x = which(hum.kmeans.genes.ord$genes == kmeans.hum.mac.genes$external_gene_name.x[i])
+  y = which(mac.kmeans.genes.ord$genes == kmeans.hum.mac.genes$mmulatta_homolog_associated_gene_name[i])
+  #print(kmeans.hum.mac.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mac.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1000-x*1000/dim(hum.hvg.warped.kmeans.genes)[1]
+  y = 1000-y*1000/dim(mac.hvg.warped.kmeans.genes)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.1)
+}
+points(data.frame(x=rep(1,dim(hum.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(hum.hvg.warped.kmeans.genes)[1])*1000/dim(hum.hvg.warped.kmeans.genes)[1]),col=cols[hum.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(mac.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mac.hvg.warped.kmeans.genes)[1])*1000/dim(mac.hvg.warped.kmeans.genes)[1]),col=cols[mac.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mac.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mac.warped.15.lg.std[as.character(mac.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = hum.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(hum.warped.15.lg.std[as.character(hum.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+##human Mou
+#Connector lines
+```{r}
+kmeans.hum.mou.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.hvg.warped.15,]
+kmeans.hum.mou.genes <- kmeans.hum.mou.genes[kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name %in% mou.hvg.warped.15,]
+```
+
+```{r}
+pos.hum.mou <- c()
+for(i in c(1:dim(kmeans.hum.mou.genes)[1])){
+  hum.gen <- kmeans.hum.mou.genes$external_gene_name.x[i]
+  mou.gen <- kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i]
+  x = which(hum.hvg.warped.kmeans.genes$genes == hum.gen)
+  y = which(mou.hvg.warped.kmeans.genes$genes == mou.gen)
+  pos.hum.mou <- rbind(pos.hum.mou,c(x,y,hum.gen, mou.gen))
+}
+pos.hum.mou <- data.matrix(pos.hum.mou)
+colnames(pos.hum.mou) = c("hum.pos","mou.pos", "hum.gen","mou.gen")
+```
+
+Sort within each cluster
+```{r}
+
+rownames(pos.hum.mou) <- pos.hum.mou[,"hum.gen"]
+hum.kmeans.genes.ord <- hum.hvg.warped.kmeans.genes
+for(i in c(1:6)){
+  genes <- hum.hvg.warped.kmeans.genes$genes[hum.hvg.warped.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mou[,"hum.gen"]])
+  genes <- pos.hum.mou[,"hum.gen"][pos.hum.mou[,"hum.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mou[genes,"mou.pos"]))]
+  hum.kmeans.genes.ord$genes[hum.hvg.warped.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+```{r}
+rownames(pos.hum.mou) <- pos.hum.mou[,"mou.gen"]
+mou.kmeans.genes.ord <- mou.hvg.warped.kmeans.genes
+for(i in c(1:6)){
+  genes <- mou.hvg.warped.kmeans.genes$genes[mou.hvg.warped.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mou[,"mou.gen"]])
+  genes <- pos.hum.mou[,"mou.gen"][pos.hum.mou[,"mou.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mou[genes,"hum.pos"]))]
+  mou.kmeans.genes.ord$genes[mou.hvg.warped.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(kmeans.hum.mou.genes)[1])){
+#for(i in c(1:10)){ 
+  x = which(hum.kmeans.genes.ord$genes == kmeans.hum.mou.genes$external_gene_name.x[i])
+  y = which(mou.kmeans.genes.ord$genes == kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  #print(kmeans.hum.mou.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1000-x*1000/dim(hum.hvg.warped.kmeans.genes)[1]
+  y = 1000-y*1000/dim(mou.hvg.warped.kmeans.genes)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.1)
+}
+points(data.frame(x=rep(1,dim(hum.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(hum.hvg.warped.kmeans.genes)[1])*1000/dim(hum.hvg.warped.kmeans.genes)[1]),col=cols[hum.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(mou.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mou.hvg.warped.kmeans.genes)[1])*1000/dim(mou.hvg.warped.kmeans.genes)[1]),col=cols[mou.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+```
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = hum.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(hum.warped.15.lg.std[as.character(hum.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mou.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mou.warped.15.lg.std[as.character(mou.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+##Monkey Mou
+#Connector lines
+```{r}
+kmeans.mac.mou.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name %in% mac.hvg.warped.15,]
+kmeans.mac.mou.genes <- kmeans.mac.mou.genes[kmeans.mac.mou.genes$mmusculus_homolog_associated_gene_name %in% mou.hvg.warped.15,]
+```
+
+```{r}
+pos.mac.mou <- c()
+for(i in c(1:dim(kmeans.mac.mou.genes)[1])){
+  mac.gen <- kmeans.mac.mou.genes$mmulatta_homolog_associated_gene_name[i]
+  mou.gen <- kmeans.mac.mou.genes$mmusculus_homolog_associated_gene_name[i]
+  x = which(mac.hvg.warped.kmeans.genes$genes == mac.gen)
+  y = which(mou.hvg.warped.kmeans.genes$genes == mou.gen)
+  pos.mac.mou <- rbind(pos.mac.mou,c(x,y,mac.gen, mou.gen))
+}
+pos.mac.mou <- data.matrix(pos.mac.mou)
+colnames(pos.mac.mou) = c("mac.pos","mou.pos", "mac.gen","mou.gen")
+```
+
+Sort within each cluster
+```{r}
+
+rownames(pos.mac.mou) <- pos.mac.mou[,"mac.gen"]
+mac.kmeans.genes.ord <- mac.hvg.warped.kmeans.genes
+for(i in c(1:6)){
+  genes <- mac.hvg.warped.kmeans.genes$genes[mac.hvg.warped.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.mac.mou[,"mac.gen"]])
+  genes <- pos.mac.mou[,"mac.gen"][pos.mac.mou[,"mac.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.mac.mou[genes,"mou.pos"]))]
+  mac.kmeans.genes.ord$genes[mac.hvg.warped.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+```{r}
+rownames(pos.mac.mou) <- pos.mac.mou[,"mou.gen"]
+mou.kmeans.genes.ord <- mou.hvg.warped.kmeans.genes
+for(i in c(1:6)){
+  genes <- mou.hvg.warped.kmeans.genes$genes[mou.hvg.warped.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.mac.mou[,"mou.gen"]])
+  genes <- pos.mac.mou[,"mou.gen"][pos.mac.mou[,"mou.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.mac.mou[genes,"mac.pos"]))]
+  mou.kmeans.genes.ord$genes[mou.hvg.warped.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(kmeans.mac.mou.genes)[1])){
+#for(i in c(1:10)){ 
+  x = which(mac.kmeans.genes.ord$genes == kmeans.mac.mou.genes$mmulatta_homolog_associated_gene_name[i])
+  y = which(mou.kmeans.genes.ord$genes == kmeans.mac.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  #print(kmeans.hum.mou.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1000-x*1000/dim(mac.hvg.warped.kmeans.genes)[1]
+  y = 1000-y*1000/dim(mou.hvg.warped.kmeans.genes)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.1)
+}
+points(data.frame(x=rep(1,dim(mac.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mac.hvg.warped.kmeans.genes)[1])*1000/dim(mac.hvg.warped.kmeans.genes)[1]),col=cols[mac.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(mou.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mou.hvg.warped.kmeans.genes)[1])*1000/dim(mou.hvg.warped.kmeans.genes)[1]),col=cols[mou.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mou.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mou.warped.15.lg.std[as.character(mou.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mac.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mac.warped.15.lg.std[as.character(mac.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+##. PCA, tSNE, UMAP for germline in each species
+###. Human
+```{r}
+dge.hum.germ <- CreateSeuratObject(raw.data = dge.hum.raw2)
+dge.hum.germ <- NormalizeData(object = dge.hum.germ, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.hum.germ <- FindVariableGenes(object = dge.hum.germ,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 1, x.high.cutoff = 3)
+dge.hum.germ <- ScaleData(object = dge.hum.germ,vars.to.regress = c("nUMI"))
+dge.hum.germ <- RunPCA(object = dge.hum.germ, pc.genes = dge.hum.germ@var.genes)
+dge.hum.germ <- RunTSNE(object = dge.hum.germ, dims.use = 1:15)
+dge.hum.germ <- RunUMAP(object = dge.hum.germ, dims.use = 1:15)
+```
+```{r}
+batchs <- as.vector(sapply(dge.hum.germ@cell.names,function(x) strsplit(x,'_')[[1]][1]))
+batchs[batchs %in% c("Human1", "Human2", "Human3", "Human4", "Human5")] = "Human1"
+batchs[batchs %in% c("Human6", "Human7")] = "Human2"
+batchs[batchs %in% c("Human8", "Human9")] = "Human3"
+batchs[batchs %in% c("Human11")] = "Human5"
+dge.hum.germ@meta.data$indi = batchs
+```
+
+
+```{r fig.width=6,fig.height=4.5}
+PCAPlot(object = dge.hum.germ, dim.1 = 1, dim.2 = 2, group.by="indi")
+PCAPlot(object = dge.hum.germ, dim.1 = 1, dim.2 = 3, group.by="indi")
+TSNEPlot(object = dge.hum.germ, group.by="indi")
+DimPlot(object = dge.hum.germ, reduction.use = "umap", do.return = TRUE, group.by="indi")
+```
+
+###. Monkey
+```{r}
+dge.mac.germ <- CreateSeuratObject(raw.data = dge.mac.raw2)
+dge.mac.germ <- NormalizeData(object = dge.mac.germ, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.mac.germ <- FindVariableGenes(object = dge.mac.germ,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 0.8, x.high.cutoff = 3)
+batchs <- as.vector(sapply(dge.mac.germ@cell.names,function(x) strsplit(x,'_')[[1]][1]))
+batchs[batchs %in% c("Monkey1", "Monkey2")] = "Monkey1"
+batchs[batchs %in% c("Monkey3")] = "Monkey2"
+batchs[batchs %in% c("Monkey4", "Monkey5")] = "Monkey3"
+batchs[batchs %in% c("Monkey6", "Monkey7")] = "Monkey4"
+batchs[batchs %in% c("Monkey8", "Monkey9")] = "Monkey5"
+dge.mac.germ@meta.data$indi = batchs
+dge.mac.germ <- ScaleData(object = dge.mac.germ,vars.to.regress = c("nUMI"))
+dge.mac.germ <- RunPCA(object = dge.mac.germ, pc.genes = dge.mac.germ@var.genes)
+dge.mac.germ <- RunTSNE(object = dge.mac.germ, pc.genes = dge.mac.germ@var.genes)
+dge.mac.germ <- RunUMAP(object = dge.mac.germ, pc.genes = dge.mac.germ@var.genes)
+```
+
+```{r fig.width=6,fig.height=4.5}
+PCAPlot(object = dge.mac.germ, dim.1 = 1, dim.2 = 2, group.by="indi")
+PCAPlot(object = dge.mac.germ, dim.1 = 1, dim.2 = 3, group.by="indi")
+TSNEPlot(object = dge.mac.germ, group.by="indi")
+DimPlot(object = dge.mac.germ, reduction.use = "umap", do.return = TRUE, group.by="indi")
+```
+
+
+###. Mouse
+```{r}
+dge.mou.germ <- CreateSeuratObject(raw.data = dge.mou.raw2)
+dge.mou.germ <- NormalizeData(object = dge.mou.germ, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.mou.germ <- FindVariableGenes(object = dge.mou.germ,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 0.8, x.high.cutoff = 3)
+dge.mou.germ <- ScaleData(object = dge.mou.germ,vars.to.regress = c("nUMI"))
+dge.mou.germ <- RunPCA(object = dge.mou.germ, pc.genes = dge.mou.germ@var.genes)
+dge.mou.germ <- RunTSNE(object = dge.mou.germ, pc.genes = dge.mou.germ@var.genes)
+dge.mou.germ <- RunUMAP(object = dge.mou.germ, pc.genes = dge.mou.germ@var.genes)
+```
+
+```{r fig.width=6,fig.height=4.5}
+PCAPlot(object = dge.mou.germ, dim.1 = 1, dim.2 = 2)
+PCAPlot(object = dge.mou.germ, dim.1 = 1, dim.2 = 3)
+TSNEPlot(object = dge.mou.germ)
+DimPlot(object = dge.mou.germ, reduction.use = "umap", do.return = TRUE)
+```
+
