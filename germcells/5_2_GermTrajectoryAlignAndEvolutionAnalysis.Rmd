@@ -1,0 +1,1117 @@
+
+#1. Read in the datasets
+```{r}
+spg.cca <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
+```
+
+```{r}
+library(monocle)
+dge.hum.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.raw2.rds")
+dge.mac.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.raw2.rds")
+dge.mou.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.raw2.rds")
+humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
+```
+
+###. Raw counts data for three species
+```{r}
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/human_merged1235_20cpg15upg.robj")
+dge.hum.raw <- dge@raw.data
+rm(dge)
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mac_merged9_nospikeincells.Robj")
+dge.mac.raw <- dge@raw.data
+rm(dge)
+dge.mou.raw <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/GSE112393_MergedAdultMouseST25_DGE.txt",header = TRUE, row.names = 1,sep="\t")
+```
+
+Move SPG clus 7 to germ and generate SPG clus 1-6 for three species.
+```{r}
+hum.spg.cells <- spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]
+mac.spg.cells <- spg.cca@cell.names[spg.cca@meta.data$species=="Monkey" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]
+mou.spg.cells <- spg.cca@cell.names[spg.cca@meta.data$species=="Mouse" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]
+```
+
+```{r}
+hum.germ.cells <- c(colnames(dge.hum.raw2), spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord==8])
+mac.germ.cells <- c(colnames(dge.mac.raw2), spg.cca@cell.names[spg.cca@meta.data$species=="Monkey" & spg.cca@meta.data$res.0.6.ord==8])
+mou.germ.cells <- c(colnames(dge.mou.raw2), spg.cca@cell.names[spg.cca@meta.data$species=="Mouse" & spg.cca@meta.data$res.0.6.ord==8])
+```
+
+> length(hum.germ.cells)
+[1] 4293
+> length(mac.germ.cells)
+[1] 12016
+> length(mou.germ.cells)
+[1] 18537
+> length(hum.spg.cells)
+[1] 1688
+> length(mac.spg.cells)
+[1] 747
+> length(mou.spg.cells)
+[1] 2174
+
+###. Full dataset
+```{r}
+dge.hum.spg.raw <- dge.hum.raw[, hum.spg.cells]
+dge.mac.spg.raw <- dge.mac.raw[, mac.spg.cells]
+dge.mou.spg.raw <- dge.mou.raw[, mou.spg.cells]
+
+dge.hum.germ.raw <- dge.hum.raw[, hum.germ.cells]
+dge.mac.germ.raw <- dge.mac.raw[, mac.germ.cells]
+dge.mou.germ.raw <- dge.mou.raw[, mou.germ.cells]
+```
+
+```{r}
+mac.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.new.cds.rds")
+mac.cds <- mac.monocle$mac.cds
+mac.ording_genes <- mac.monocle$mac.ording_genes
+rm(mac.monocle)
+```
+
+```{r}
+hum.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.new.cds.rds")
+hum.cds <- hum.monocle$hum.cds
+hum.ording_genes <- hum.monocle$hum.ording_genes
+rm(hum.monocle)
+```
+
+```{r}
+mou.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.new.cds.rds")
+mou.cds <- mou.monocle$mou.cds
+mou.ording_genes <- mou.monocle$mou.ording_genes
+rm(mou.monocle)
+```
+
+
+```{r}
+#Human
+hum.cds <- newCellDataSet(as.matrix(dge.hum.germ.raw))
+hum.cds <- estimateSizeFactors(hum.cds)
+hum.cds <- estimateDispersions(hum.cds)
+disp_table <- dispersionTable(hum.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+hum.cds <- setOrderingFilter(hum.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(hum.cds)
+hum.cds <- reduceDimension(hum.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+hum.cds <- clusterCells(hum.cds, num_clusters = 10)
+plot_cell_clusters(hum.cds)
+pData(hum.cds)$Cluster <- factor(pData(hum.cds)$Cluster)
+hum.cds.deg <- differentialGeneTest(hum.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+hum.ording_genes <- rownames(hum.cds.deg)[order(hum.cds.deg$qval)][1:2000]
+hum.cds <- setOrderingFilter(hum.cds, ordering_genes = c(hum.ording_genes))
+hum.cds <- reduceDimension(hum.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+hum.cds <- orderCells(hum.cds)
+saveRDS(list(hum.cds = hum.cds,hum.ording_genes = hum.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.new.cds.rds", compress = FALSE)
+plot_cell_trajectory(hum.cds, color_by = "Pseudotime")
+```
+
+```{r}
+#Monkey
+mac.cds <- newCellDataSet(as.matrix(dge.mac.germ.raw))
+mac.cds <- estimateSizeFactors(mac.cds)
+mac.cds <- estimateDispersions(mac.cds)
+disp_table <- dispersionTable(mac.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+mac.cds <- setOrderingFilter(mac.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(mac.cds)
+mac.cds <- reduceDimension(mac.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+mac.cds <- clusterCells(mac.cds, num_clusters = 10)
+plot_cell_clusters(mac.cds)
+pData(mac.cds)$Cluster <- factor(pData(mac.cds)$Cluster)
+mac.cds.deg <- differentialGeneTest(mac.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+mac.ording_genes <- rownames(mac.cds.deg)[order(mac.cds.deg$qval)][1:2000]
+mac.cds <- setOrderingFilter(mac.cds, ordering_genes = c(mac.ording_genes))
+mac.cds <- reduceDimension(mac.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+mac.cds <- orderCells(mac.cds)
+saveRDS(list(mac.cds = mac.cds, mac.ording_genes = mac.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.new.cds.rds", compress = FALSE)
+plot_cell_trajectory(mac.cds, color_by = "Pseudotime")
+```
+
+```{r}
+#Mouse
+mou.cds <- newCellDataSet(as.matrix(dge.mou.germ.raw))
+mou.cds <- estimateSizeFactors(mou.cds)
+mou.cds <- estimateDispersions(mou.cds)
+disp_table <- dispersionTable(mou.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+mou.cds <- setOrderingFilter(mou.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(mou.cds)
+mou.cds <- reduceDimension(mou.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+mou.cds <- clusterCells(mou.cds, num_clusters = 10)
+plot_cell_clusters(mou.cds)
+pData(mou.cds)$Cluster <- factor(pData(mou.cds)$Cluster)
+mou.cds.deg <- differentialGeneTest(mou.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+mou.ording_genes <- rownames(mou.cds.deg)[order(mou.cds.deg$qval)][1:2000]
+mou.cds <- setOrderingFilter(mou.cds, ordering_genes = c(mou.ording_genes))
+mou.cds <- reduceDimension(mou.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+mou.cds <- orderCells(mou.cds)
+saveRDS(list(mou.cds = mou.cds,mou.ording_genes = mou.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.new.cds.rds", compress = FALSE)
+plot_cell_trajectory(mou.cds, color_by = "Pseudotime")
+```
+
+```{r fig.width=5,fig.height=5}
+plot_cell_trajectory(hum.cds, color_by = "Pseudotime")
+plot_cell_trajectory(mac.cds, color_by = "Pseudotime")
+plot_cell_trajectory(mou.cds, color_by = "Pseudotime")
+```
+
+
+```{r fig.width=5,fig.height=4}
+plot_genes_in_pseudotime(mac.cds["HORMAD1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(hum.cds["HORMAD1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Hormad1",], color_by = "Pseudotime")
+
+plot_genes_in_pseudotime(hum.cds["PIWIL1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mac.cds["PIWIL1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Piwil1",], color_by = "Pseudotime")
+
+plot_genes_in_pseudotime(hum.cds["ACRV1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mac.cds["ACRV1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Acrv1",], color_by = "Pseudotime")
+```
+
+```{r}
+dge.hum.germ.norm <- apply(dge.hum.germ.raw,2,function(x) x/sum(x)*1e4)
+dge.mac.germ.norm <- apply(dge.mac.germ.raw,2,function(x) x/sum(x)*1e4)
+dge.mou.germ.norm <- apply(dge.mou.germ.raw,2,function(x) x/sum(x)*1e4)
+```
+
+Intersection of genes
+```{r}
+int.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.ording_genes,]
+int.genes <- int.genes[int.genes$mmulatta_homolog_associated_gene_name %in% mac.ording_genes,]
+int.genes <- int.genes[int.genes$mmusculus_homolog_associated_gene_name %in% mou.ording_genes,]
+```
+
+```{r}
+dge.hum.germ.norm.int <- dge.hum.germ.norm[int.genes$external_gene_name.x,]
+dge.mac.germ.norm.int <- dge.mac.germ.norm[int.genes$mmulatta_homolog_associated_gene_name,]
+dge.mou.germ.norm.int <- dge.mou.germ.norm[int.genes$mmusculus_homolog_associated_gene_name,]
+dge.hum.germ.lg.int <- log(dge.hum.germ.norm.int + 1)
+dge.mac.germ.lg.int <- log(dge.mac.germ.norm.int + 1)
+dge.mou.germ.lg.int <- log(dge.mou.germ.norm.int + 1)
+```
+
+### Run cellAlign
+```{r}
+library(cellAlign)
+library(ComplexHeatmap)
+```
+
+```{r}
+numPts = 200
+hum.traj <- as.numeric(hum.cds$Pseudotime)
+hum.traj <- 1- hum.traj/max(hum.traj)
+names(hum.traj) <- colnames(dge.hum.germ.lg.int)
+align.hum <- cellAlign::interWeights(expDataBatch = dge.hum.germ.lg.int, trajCond = hum.traj, winSz = 0.1, numPts = numPts)
+
+mac.traj <- as.numeric(mac.cds$Pseudotime)
+mac.traj <- 1- mac.traj/max(mac.traj)
+names(mac.traj) <- colnames(dge.mac.germ.lg.int)
+align.mac <- cellAlign::interWeights(expDataBatch = dge.mac.germ.lg.int, trajCond = mac.traj, winSz = 0.1, numPts = numPts)
+
+mou.traj <- as.numeric(mou.cds$Pseudotime)
+mou.traj <- mou.traj/max(mou.traj)
+names(mou.traj) <- colnames(dge.mou.germ.lg.int)
+align.mou <- cellAlign::interWeights(expDataBatch = dge.mou.germ.lg.int, trajCond = mou.traj, winSz = 0.1, numPts = numPts)
+```
+
+```{r}
+align.hum.scaled <- scaleInterpolate(align.hum)
+align.mac.scaled <- scaleInterpolate(align.mac)
+align.mou.scaled <- scaleInterpolate(align.mou)
+```
+
+Align: map monkey to human
+```{r}
+hummac.align <- globalAlign(align.mac.scaled$scaledData, 
+                     align.hum.scaled$scaledData, 
+                     scores = list(query = align.mac.scaled$traj, 
+                                   ref = align.hum.scaled$traj), 
+                     sigCalc = F, numPerm = 20)
+plotAlign(hummac.align)
+hummac.mapping <- mapRealDataGlobal(hummac.align, intTrajQuery = align.mac.scaled$traj, realTrajQuery = mac.traj, intTrajRef = align.hum.scaled$traj, realTrajRef = hum.traj)
+plotMapping(hummac.mapping)
+```
+
+Align: map mouse to monkey
+```{r}
+macmou.align <- globalAlign(align.mou.scaled$scaledData, align.mac.scaled$scaledData, scores = list(query = align.mou.scaled$traj, ref = align.mac.scaled$traj), sigCalc = F, numPerm = 20)
+plotAlign(macmou.align)
+macmou.mapping <- mapRealDataGlobal(macmou.align, intTrajQuery = align.mou.scaled$traj, realTrajQuery = mou.traj, intTrajRef = align.mac.scaled$traj, realTrajRef = mac.traj)
+plotMapping(macmou.mapping)
+```
+
+Align: map mouse to human
+```{r}
+hummou.align <- globalAlign(align.mou.scaled$scaledData, align.hum.scaled$scaledData, scores = list(query = align.mou.scaled$traj, ref = align.hum.scaled$traj), sigCalc = F, numPerm = 20)
+plotAlign(hummou.align)
+hummou.mapping <- mapRealDataGlobal(hummou.align, intTrajQuery = align.mou.scaled$traj, realTrajQuery = mou.traj, intTrajRef = align.hum.scaled$traj, realTrajRef = hum.traj)
+plotMapping(hummou.mapping)
+```
+
+##. Calculate the centroids for the pseudotime points.
+```{r}
+hum.lens <- unlist(lapply(hummac.mapping$refAssign,length))
+hum.200.cen <- matrix(0, nrow=dim(dge.hum.germ.norm)[1], ncol=length(hummac.mapping$refAssign))
+for(i in c(1:dim(hum.200.cen)[2])){
+  if(length(hummac.mapping$refAssign[[i]])==1){
+    hum.200.cen[,i] <- dge.hum.germ.norm[,hummac.mapping$refAssign[[i]]]
+  }else{
+    hum.200.cen[,i] <- apply(dge.hum.germ.norm[,hummac.mapping$refAssign[[i]]],1,mean)
+  }
+}
+
+mac.lens <- unlist(lapply(hummac.mapping$queryAssign,length))
+mac.200.cen <- matrix(0, nrow=dim(dge.mac.germ.norm)[1], ncol=length(hummac.mapping$queryAssign))
+for(i in c(1:dim(mac.200.cen)[2])){
+  if(length(hummac.mapping$queryAssign[[i]])==1){
+    mac.200.cen[,i] <- dge.mac.germ.norm[,hummac.mapping$queryAssign[[i]]]
+  }else{
+    mac.200.cen[,i] <- apply(dge.mac.germ.norm[,hummac.mapping$queryAssign[[i]]],1,mean)
+  }
+}
+
+mou.lens <- unlist(lapply(hummou.mapping$queryAssign,length))
+mou.200.cen <- matrix(0, nrow=dim(dge.mou.germ.norm)[1], ncol=length(hummou.mapping$queryAssign))
+for(i in c(1:dim(mou.200.cen)[2])){
+  if(length(hummou.mapping$queryAssign[[i]])==1){
+    mou.200.cen[,i] <- dge.mou.germ.norm[,hummou.mapping$queryAssign[[i]]]
+  }else{
+    mou.200.cen[,i] <- apply(dge.mou.germ.norm[,hummou.mapping$queryAssign[[i]]],1,mean)
+  }
+}
+```
+
+```{r}
+rownames(hum.200.cen) = rownames(dge.hum.germ.norm)
+rownames(mac.200.cen) = rownames(dge.mac.germ.norm)
+rownames(mou.200.cen) = rownames(dge.mou.germ.norm)
+```
+
+Centroids for SPG
+```{r}
+dge.hum.spg.norm <- apply(dge.hum.spg.raw,2,function(x) x/sum(x)*1e4)
+dge.mac.spg.norm <- apply(dge.mac.spg.raw,2,function(x) x/sum(x)*1e4)
+dge.mou.spg.norm <- apply(dge.mou.spg.raw,2,function(x) x/sum(x)*1e4)
+```
+
+```{r}
+dge.hum.spg.cen <- apply(dge.hum.spg.norm,1,mean)
+dge.mac.spg.cen <- apply(dge.mac.spg.norm,1,mean)
+dge.mou.spg.cen <- apply(dge.mou.spg.norm,1,mean)
+
+names(dge.hum.spg.cen) <- rownames(dge.hum.spg.norm)
+names(dge.mac.spg.cen) <- rownames(dge.mac.spg.norm)
+names(dge.mou.spg.cen) <- rownames(dge.mou.spg.norm)
+```
+
+
+
+```{r}
+ca.cen.int.600 <- cbind(dge.hum.spg.cen[int.genes$external_gene_name.x],hum.200.cen[int.genes$external_gene_name.x,], dge.mac.spg.cen[int.genes$mmulatta_homolog_associated_gene_name], mac.200.cen[int.genes$mmulatta_homolog_associated_gene_name,], dge.mou.spg.cen[int.genes$mmusculus_homolog_associated_gene_name], mou.200.cen[int.genes$mmusculus_homolog_associated_gene_name,])
+
+colnames(ca.cen.int.600) <- c(rep("Human",201),rep("Monkey",201),rep("Mouse",201))
+ca.cen.int.600.norm <- apply(ca.cen.int.600,2,function(x) x/sum(x)*1000)
+ca.cen.int.600.pca <- prcomp(t(ca.cen.int.600.norm), center = TRUE, scale. = TRUE)
+```
+
+```{r fig.width=7,fig.height=5}
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC2)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+```
+
+Redo PCA using top 30 PCs
+```{r fig.width=7,fig.height=5}
+ca.cen.int.600.repca <- prcomp(ca.cen.int.600.pca$x[,c(1:3)], center = TRUE, scale. = TRUE)
+ggplot(data.frame(ca.cen.int.600.repca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC2)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+ggplot(data.frame(ca.cen.int.600.repca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+```
+
+
+##Orthologs gene expression score
+1. 1-1-1 orthologs
+```{r fig.width=7,fig.height=5}
+hum.201.cen <- cbind(dge.hum.spg.cen,hum.200.cen)
+hum.111orth.perc <- apply(hum.201.cen[humMacMouOrth.1to1.in$external_gene_name.x,],2,sum)/apply(hum.201.cen,2,sum)
+
+mac.201.cen <- cbind(dge.mac.spg.cen,mac.200.cen)
+mac.111orth.perc <- apply(mac.201.cen[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,],2,sum)/apply(mac.201.cen,2,sum)
+
+mou.201.cen <- cbind(dge.mou.spg.cen,mou.200.cen)
+mou.111orth.perc <- apply(mou.201.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,],2,sum)/apply(mou.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(hum.111orth.perc, mac.111orth.perc, mou.111orth.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+Separate plotting
+```{r fig.width=7,fig.height=5}
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(hum.111orth.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.111orth.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.111orth.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+```
+
+## Calculate gene detection rate in each cluster.
+```{r}
+hum.200.gperc <- matrix(0, nrow=dim(dge.hum.germ.norm)[1], ncol=length(hummac.mapping$refAssign))
+for(i in c(1:dim(hum.200.gperc)[2])){
+  if(length(hummac.mapping$refAssign[[i]])==1){
+    hum.200.gperc[,i] <- as.numeric(dge.hum.germ.norm[,hummac.mapping$refAssign[[i]]]>0)
+  }else{
+    hum.200.gperc[,i] <- apply(dge.hum.germ.norm[,hummac.mapping$refAssign[[i]]],1,function(x) mean(x>0))
+  }
+}
+
+mac.200.gperc <- matrix(0, nrow=dim(dge.mac.germ.norm)[1], ncol=length(hummac.mapping$queryAssign))
+for(i in c(1:dim(mac.200.gperc)[2])){
+  if(length(hummac.mapping$queryAssign[[i]])==1){
+    mac.200.gperc[,i] <- as.numeric(dge.mac.germ.norm[,hummac.mapping$queryAssign[[i]]]>0)
+  }else{
+    mac.200.gperc[,i] <- apply(dge.mac.germ.norm[,hummac.mapping$queryAssign[[i]]],1,function(x) mean(x>0))
+  }
+}
+
+mou.200.gperc <- matrix(0, nrow=dim(dge.mou.germ.norm)[1], ncol=length(hummou.mapping$queryAssign))
+for(i in c(1:dim(mou.200.gperc)[2])){
+  if(length(hummou.mapping$queryAssign[[i]])==1){
+    mou.200.gperc[,i] <- as.numeric(dge.mou.germ.norm[,hummou.mapping$queryAssign[[i]]]>0)
+  }else{
+    mou.200.gperc[,i] <- apply(dge.mou.germ.norm[,hummou.mapping$queryAssign[[i]]],1,function(x) mean(x>0))
+  }
+}
+```
+
+```{r}
+hum.201.gper <- cbind(apply(dge.hum.spg.raw,1,function(x) mean(x>0)),hum.200.gperc)
+mac.201.gper <- cbind(apply(dge.mac.spg.raw,1,function(x) mean(x>0)),mac.200.gperc)
+mou.201.gper <- cbind(apply(dge.mou.spg.raw,1,function(x) mean(x>0)),mou.200.gperc)
+rownames(hum.201.gper) <- rownames(dge.hum.spg.raw)
+rownames(mac.201.gper) <- rownames(dge.mac.spg.raw)
+rownames(mou.201.gper) <- rownames(dge.mou.spg.raw)
+```
+
+
+
+```{r fig.width=7,fig.height=5}
+hum.111orth.perc <- apply(hum.201.gper[humMacMouOrth.1to1.in$external_gene_name.x,],2,function(x) sum(x>0.05))/apply(hum.201.gper,2,function(x) sum(x>0.05))
+
+mac.111orth.perc <- apply(mac.201.gper[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,],2,function(x) sum(x>0.05))/apply(mac.201.gper,2,function(x) sum(x>0.05))
+
+mou.111orth.perc <- apply(mou.201.gper[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,],2,function(x) sum(x>0.05))/apply(mou.201.gper,2,function(x) sum(x>0.05))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(hum.111orth.perc, mac.111orth.perc, mou.111orth.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+```{r fig.width=7,fig.height=5}
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.111orth.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.111orth.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.111orth.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+
+
+```{r}
+library(biomaRt) #Ensemble Gene 94
+ensembl <- useMart(host='http://oct2018.archive.ensembl.org', 
+                     biomart='ENSEMBL_MART_ENSEMBL')
+ensembl = useDataset("hsapiens_gene_ensembl",mart=ensembl)
+
+attributes = c("ensembl_gene_id","external_gene_name","mmulatta_homolog_ensembl_gene","mmulatta_homolog_associated_gene_name","mmulatta_homolog_perc_id","mmulatta_homolog_perc_id_r1","mmulatta_homolog_goc_score","mmulatta_homolog_wga_coverage","mmulatta_homolog_dn","mmulatta_homolog_ds","mmulatta_homolog_orthology_confidence","mmulatta_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+humMac <- getBM(attributes = attributes,mart = ensembl)
+dim(humMac)
+
+#Get all Human-Macaque gene pairs
+hum_type <- getBM(attributes = c("ensembl_gene_id","external_gene_name","gene_biotype"),mart = ensembl)
+```
+
+###. Human-Mouse
+```{r}
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name", "mmusculus_homolog_perc_id","mmusculus_homolog_perc_id_r1","mmusculus_homolog_goc_score","mmusculus_homolog_wga_coverage","mmusculus_homolog_dn","mmusculus_homolog_ds","mmusculus_homolog_orthology_confidence","mmusculus_homolog_orthology_type")
+
+humMou <- getBM(attributes = attributes,mart = ensembl)
+dim(humMou)
+```
+
+```{r}
+humgene <- unique(humMac$ensembl_gene_id)
+humMacMou.AllGene <- merge(humMac, humMou, by = "ensembl_gene_id")
+rownames(hum_type) = hum_type$ensembl_gene_id
+hum.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene=="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene=="",]
+hum.spe.coding <- hum.spe[hum_type[hum.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+```
+
+### Human specific expression
+```{r}
+hum.spe <- intersect(hum.spe$external_gene_name.x, rownames(dge.hum.germ.norm))
+hum.spe.coding <- intersect(hum.spe.coding$external_gene_name.x, rownames(dge.hum.germ.norm))
+```
+
+```{r fig.width=7,fig.height=5}
+hum.spe.coding.perc <- apply(hum.201.cen[hum.spe.coding,],2,sum)/apply(hum.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(hum.spe.coding.perc, rep(NA,402)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+
+percentage of expressed genes
+```{r fig.width=7,fig.height=5}
+hum.spe.coding.perc <- apply(hum.201.gper[hum.spe.coding,],2,function(x) sum(x>=0.05))/apply(hum.201.gper,2,function(x) sum(x>=0.05))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.spe.coding.perc, rep(NA,402)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Human Specific Coding Genes\nGene detection rate cutoff = 0.05")
+
+hum.spe.coding.perc <- apply(hum.201.gper[hum.spe.coding,],2,function(x) sum(x>=0.1))/apply(hum.201.gper,2,function(x) sum(x>=0.1))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.spe.coding.perc, rep(NA,402)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Human Specific Coding Genes\nGene detection rate cutoff = 0.1")
+
+hum.spe.coding.perc <- apply(hum.201.gper[hum.spe.coding,],2,function(x) sum(x>=0.3))/apply(hum.201.gper,2,function(x) sum(x>=0.3))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.spe.coding.perc, rep(NA,402)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Human Specific Coding Genes\nGene detection rate cutoff = 0.3")
+
+hum.spe.coding.perc <- apply(hum.201.gper[hum.spe.coding,],2,function(x) sum(x>=0.5))/apply(hum.201.gper,2,function(x) sum(x>=0.5))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.spe.coding.perc, rep(NA,402)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Human Specific Coding Genes\nGene detection rate cutoff = 0.5")
+
+hum.spe.coding.perc <- apply(hum.201.gper[hum.spe.coding,],2,function(x) sum(x>=0.6))/apply(hum.201.gper,2,function(x) sum(x>=0.6))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.spe.coding.perc, rep(NA,402)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Human Specific Coding Genes\nGene detection rate cutoff = 0.6")
+```
+
+#One to many
+```{r}
+hum.onetomany <- humMacMou.AllGene[humMacMou.AllGene$mmusculus_homolog_orthology_type=="ortholog_one2many" & humMacMou.AllGene$mmulatta_homolog_orthology_type=="ortholog_one2many",]
+hum.onetomany.coding <- hum.onetomany[hum_type[hum.onetomany$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+hum.onetomany.coding <- hum.onetomany.coding[hum.onetomany.coding$external_gene_name.x %in% rownames(dge.hum.germ.norm),]
+hum.onetomany.mac.coding <- hum.onetomany.coding[hum.onetomany.coding$mmulatta_homolog_associated_gene_name %in% rownames(dge.mac.germ.norm),]$mmulatta_homolog_associated_gene_name
+hum.onetomany.mou.coding <- hum.onetomany.coding[hum.onetomany.coding$mmusculus_homolog_associated_gene_name %in% rownames(dge.mou.germ.norm),]$mmusculus_homolog_associated_gene_name
+```
+
+```{r fig.width=7,fig.height=5}
+hum.one2many.coding.hum.perc <- apply(hum.201.cen[unique(hum.onetomany.coding$external_gene_name.x),],2,sum)/apply(hum.201.cen,2,sum)
+hum.one2many.coding.mac.perc <- apply(mac.201.cen[unique(hum.onetomany.mac.coding),],2,sum)/apply(mac.201.cen,2,sum)
+hum.one2many.coding.mou.perc <- apply(mou.201.cen[unique(hum.onetomany.mou.coding),],2,sum)/apply(mou.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(hum.one2many.coding.hum.perc, hum.one2many.coding.mac.perc, hum.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+Separate plotting
+```{r}
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(hum.one2many.coding.hum.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), hum.one2many.coding.mac.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), hum.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+
+```{r fig.width=7,fig.height=5}
+hum.one2many.coding.hum.perc <- apply(hum.201.gper[unique(hum.onetomany.coding$external_gene_name.x),],2,function(x) sum(x>0.05))/apply(hum.201.gper,2,function(x) sum(x>0.05))
+hum.one2many.coding.mac.perc <- apply(mac.201.gper[unique(hum.onetomany.mac.coding),],2,function(x) sum(x>0.05))/apply(mac.201.gper,2,function(x) sum(x>0.05))
+hum.one2many.coding.mou.perc <- apply(mou.201.gper[unique(hum.onetomany.mou.coding),],2,function(x) sum(x>0.05))/apply(mou.201.gper,2,function(x) sum(x>0.05))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(hum.one2many.coding.hum.perc, hum.one2many.coding.mac.perc, hum.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+Separate plotting
+```{r}
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(hum.one2many.coding.hum.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), hum.one2many.coding.mac.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), hum.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+
+###. Mouse
+```{r}
+ensembl = useDataset("mmusculus_gene_ensembl",mart=ensembl)
+
+attributes = c("ensembl_gene_id","external_gene_name","hsapiens_homolog_ensembl_gene","hsapiens_homolog_associated_gene_name","hsapiens_homolog_perc_id","hsapiens_homolog_perc_id_r1","hsapiens_homolog_goc_score","hsapiens_homolog_wga_coverage","hsapiens_homolog_dn","hsapiens_homolog_ds","hsapiens_homolog_orthology_confidence","hsapiens_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+mouHum <- getBM(attributes = attributes,mart = ensembl)
+dim(mouHum)
+
+mou_type <- getBM(attributes = c("ensembl_gene_id","external_gene_name","gene_biotype"),mart = ensembl)
+
+###. Mouse-Macaque
+attributes = c("ensembl_gene_id","external_gene_name","mmulatta_homolog_ensembl_gene","mmulatta_homolog_associated_gene_name", "mmulatta_homolog_perc_id","mmulatta_homolog_perc_id_r1","mmulatta_homolog_goc_score","mmulatta_homolog_wga_coverage","mmulatta_homolog_dn","mmulatta_homolog_ds","mmulatta_homolog_orthology_confidence","mmulatta_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+mouMac <- getBM(attributes = attributes,mart = ensembl)
+dim(mouMac)
+
+```
+
+```{r}
+mouHumMac.AllGene <- merge(mouHum, mouMac, by = "ensembl_gene_id")
+rownames(mou_type) = mou_type$ensembl_gene_id
+mou.spe <- mouHumMac.AllGene[mouHumMac.AllGene$mmulatta_homolog_ensembl_gene=="" & mouHumMac.AllGene$hsapiens_homolog_ensembl_gene=="",]
+mou.spe.coding <- mou.spe[mou_type[mou.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+```
+
+### Mouse specific expression
+```{r}
+mou.spe <- intersect(mou.spe$external_gene_name.x, rownames(dge.mou.germ.norm))
+mou.spe.coding <- intersect(mou.spe.coding$external_gene_name.x, rownames(dge.mou.germ.norm))
+```
+
+```{r fig.width=7,fig.height=5}
+mou.spe.coding.perc <- apply(mou.201.cen[mou.spe.coding,],2,sum)/apply(mou.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,402), mou.spe.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+mou.spe.coding.perc <- apply(mou.201.gper[mou.spe.coding,],2,function(x) sum(x>0.05))/apply(mou.201.gper,2,function(x) sum(x>0.05))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,402), mou.spe.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Mouse Specific Coding Genes\nGene detection rate cutoff = 0.05")
+
+mou.spe.coding.perc <- apply(mou.201.gper[mou.spe.coding,],2,function(x) sum(x>0.1))/apply(mou.201.gper,2,function(x) sum(x>0.1))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,402), mou.spe.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Mouse Specific Coding Genes\nGene detection rate cutoff = 0.1")
+
+mou.spe.coding.perc <- apply(mou.201.gper[mou.spe.coding,],2,function(x) sum(x>0.5))/apply(mou.201.gper,2,function(x) sum(x>0.5))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,402), mou.spe.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Mouse Specific Coding Genes\nGene detection rate cutoff = 0.5")
+
+mou.spe.coding.perc <- apply(mou.201.gper[mou.spe.coding,],2,function(x) sum(x>0.6))/apply(mou.201.gper,2,function(x) sum(x>0.6))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,402), mou.spe.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) + ggtitle("Mouse Specific Coding Genes\nGene detection rate cutoff = 0.6")
+```
+
+
+#One to many
+```{r}
+mou.onetomany <- mouHumMac.AllGene[mouHumMac.AllGene$hsapiens_homolog_orthology_type == "ortholog_one2many" & mouHumMac.AllGene$mmulatta_homolog_orthology_type=="ortholog_one2many",]
+mou.onetomany.coding <- mou.onetomany[mou_type[mou.onetomany$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+mou.onetomany.coding <- mou.onetomany.coding[mou.onetomany.coding$external_gene_name.x %in% rownames(dge.mou.germ.norm),]
+mou.onetomany.mac.coding <- mou.onetomany.coding[mou.onetomany.coding$mmulatta_homolog_associated_gene_name %in% rownames(dge.mac.germ.norm),]$mmulatta_homolog_associated_gene_name
+mou.onetomany.hum.coding <- mou.onetomany.coding[mou.onetomany.coding$hsapiens_homolog_associated_gene_name %in% rownames(dge.hum.germ.norm),]$hsapiens_homolog_associated_gene_name
+```
+
+```{r fig.width=7,fig.height=5}
+mou.one2many.coding.hum.perc <- apply(hum.201.cen[unique(mou.onetomany.hum.coding),],2,sum)/apply(hum.201.cen,2,sum)
+mou.one2many.coding.mac.perc <- apply(mac.201.cen[unique(mou.onetomany.mac.coding),],2,sum)/apply(mac.201.cen,2,sum)
+mou.one2many.coding.mou.perc <- apply(mou.201.cen[unique(mou.onetomany.coding$external_gene_name.x),],2,sum)/apply(mou.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(mou.one2many.coding.hum.perc, mou.one2many.coding.mac.perc, mou.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+```{r fig.width=7,fig.height=5}
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(mou.one2many.coding.hum.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mou.one2many.coding.mac.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+```
+
+```{r fig.width=7,fig.height=5}
+mou.one2many.coding.hum.perc <- apply(hum.201.gper[unique(mou.onetomany.hum.coding),],2,function(x) sum(x>0.05))/apply(hum.201.gper,2,function(x) sum(x>0.05))
+mou.one2many.coding.mac.perc <- apply(mac.201.gper[unique(mou.onetomany.mac.coding),],2,function(x) sum(x>0.05))/apply(mac.201.gper,2,function(x) sum(x>0.05))
+mou.one2many.coding.mou.perc <- apply(mou.201.gper[unique(mou.onetomany.coding$external_gene_name.x),],2,function(x) sum(x>0.05))/apply(mou.201.gper,2,function(x) sum(x>0.05))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(mou.one2many.coding.hum.perc, mou.one2many.coding.mac.perc, mou.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+```{r fig.width=7,fig.height=5}
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(mou.one2many.coding.hum.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mou.one2many.coding.mac.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+dat = data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+
+
+###. Monkey
+```{r}
+ensembl = useDataset("mmulatta_gene_ensembl",mart=ensembl)
+#listFilters(ensembl) #265 with_mmulatta_homolog
+#searchAttributes(mart = ensembl, pattern = "mmulatta")
+
+attributes = c("ensembl_gene_id","external_gene_name","hsapiens_homolog_ensembl_gene","hsapiens_homolog_associated_gene_name","hsapiens_homolog_perc_id","hsapiens_homolog_perc_id_r1","hsapiens_homolog_goc_score","hsapiens_homolog_wga_coverage","hsapiens_homolog_dn","hsapiens_homolog_ds","hsapiens_homolog_orthology_confidence","hsapiens_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+macHum <- getBM(attributes = attributes,mart = ensembl)
+dim(macHum)
+
+mac_type <- getBM(attributes = c("ensembl_gene_id","external_gene_name","gene_biotype"),mart = ensembl)
+
+###. Mouse-Macaque
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name", "mmusculus_homolog_perc_id","mmusculus_homolog_perc_id_r1","mmusculus_homolog_goc_score","mmusculus_homolog_wga_coverage","mmusculus_homolog_dn","mmusculus_homolog_ds","mmusculus_homolog_orthology_confidence","mmusculus_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+macMou <- getBM(attributes = attributes,mart = ensembl)
+dim(macMou)
+
+```
+
+```{r}
+macHumMou.AllGene <- merge(macHum, macMou, by = "ensembl_gene_id")
+rownames(mac_type) = mac_type$ensembl_gene_id
+mac.spe <- macHumMou.AllGene[macHumMou.AllGene$mmusculus_homolog_ensembl_gene=="" & macHumMou.AllGene$hsapiens_homolog_ensembl_gene=="",]
+mac.spe.coding <- mac.spe[mac_type[mac.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+```
+
+### Monkey specific expression
+```{r}
+mac.spe <- intersect(mac.spe$external_gene_name.x, rownames(dge.mac.germ.norm))
+mac.spe.coding <- intersect(mac.spe.coding$external_gene_name.x, rownames(dge.mac.germ.norm))
+```
+
+```{r fig.width=7,fig.height=5}
+mac.spe.coding.perc <- apply(mac.201.cen[mac.spe.coding,],2,sum)/apply(mac.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.spe.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+```{r fig.width=7,fig.height=5}
+mac.spe.coding.perc <- apply(mac.201.gper[mac.spe.coding,],2,function(x) sum(x > 0.05))/apply(mac.201.cen,2,function(x) sum(x > 0.05))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.spe.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+
+#One to many
+```{r}
+mac.onetomany <- macHumMou.AllGene[macHumMou.AllGene$hsapiens_homolog_orthology_type == "ortholog_one2many" & macHumMou.AllGene$mmusculus_homolog_orthology_type=="ortholog_one2many",]
+mac.onetomany.coding <- mac.onetomany[mac_type[mac.onetomany$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+mac.onetomany.coding <- mac.onetomany.coding[mac.onetomany.coding$external_gene_name.x %in% rownames(dge.mac.germ.norm),]
+mac.onetomany.mou.coding <- mac.onetomany.coding[mac.onetomany.coding$mmusculus_homolog_associated_gene_name %in% rownames(dge.mou.germ.norm),]$mmusculus_homolog_associated_gene_name
+mac.onetomany.hum.coding <- mac.onetomany.coding[mac.onetomany.coding$hsapiens_homolog_associated_gene_name %in% rownames(dge.hum.germ.norm),]$hsapiens_homolog_associated_gene_name
+```
+
+```{r fig.width=7,fig.height=5}
+mac.one2many.coding.hum.perc <- apply(hum.201.cen[unique(mac.onetomany.hum.coding),],2,sum)/apply(hum.201.cen,2,sum)
+mac.one2many.coding.mac.perc <- apply(mac.201.cen[unique(mac.onetomany.coding$external_gene_name.x),],2,sum)/apply(mac.201.cen,2,sum)
+mac.one2many.coding.mou.perc <- apply(mou.201.cen[unique(mac.onetomany.mou.coding),],2,sum)/apply(mou.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(mac.one2many.coding.hum.perc, mac.one2many.coding.mac.perc, mac.one2many.coding.mou.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+#####. primate-specific 
+```{r}
+hummac.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene!="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene=="",]
+hummac.spe.coding <- hummac.spe[hum_type[hummac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+```
+
+### primates specific expression
+```{r}
+hum.hummac.spe.coding <- intersect(hummac.spe.coding$external_gene_name.x,rownames(dge.hum.germ.norm))
+mac.hummac.spe.coding <-intersect(hummac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.norm))
+```
+
+```{r fig.width=7,fig.height=5}
+hum.hummac.coding.perc <- apply(hum.201.cen[hum.hummac.spe.coding,],2,sum)/apply(hum.201.cen,2,sum)
+mac.hummac.coding.perc <- apply(mac.201.cen[mac.hummac.spe.coding,],2,sum)/apply(mac.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(hum.hummac.coding.perc, mac.hummac.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.hummac.coding.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201),mac.hummac.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000")) 
+```
+
+```{r fig.width=7,fig.height=5}
+hum.hummac.coding.perc <- apply(hum.201.gper[hum.hummac.spe.coding,],2,function(x) sum(x>0.05))/apply(hum.201.gper,2,function(x) sum(x>0.05))
+mac.hummac.coding.perc <- apply(mac.201.gper[mac.hummac.spe.coding,],2,function(x) sum(x>0.05))/apply(mac.201.gper,2,function(x) sum(x>0.05))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.hummac.coding.perc, mac.hummac.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.hummac.coding.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.hummac.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"))
+```
+
+#####. moumac-specific
+```{r}
+moumac.spe <- mouHumMac.AllGene[mouHumMac.AllGene$hsapiens_homolog_ensembl_gene=="" & mouHumMac.AllGene$mmulatta_homolog_ensembl_gene!="",]
+moumac.spe.coding <- moumac.spe[mou_type[moumac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+```
+
+### primates specific expression
+```{r}
+mou.moumac.spe.coding <- intersect(moumac.spe.coding$external_gene_name.x,rownames(dge.mou.germ.norm))
+mac.moumac.spe.coding <-intersect(moumac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.norm))
+```
+
+```{r fig.width=7,fig.height=5}
+mou.moumac.coding.perc <- apply(mou.201.cen[mou.moumac.spe.coding,],2,sum)/apply(mou.201.cen,2,sum)
+mac.moumac.coding.perc <- apply(mac.201.cen[mac.moumac.spe.coding,],2,sum)/apply(mac.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.moumac.coding.perc, mou.moumac.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.moumac.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.moumac.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+```
+
+```{r fig.width=7,fig.height=5}
+mou.moumac.coding.perc <- apply(mou.201.gper[mou.moumac.spe.coding,],2,function(x) sum(x>0.05))/apply(mou.201.gper,2,function(x) sum(x>0.05))
+mac.moumac.coding.perc <- apply(mac.201.gper[mac.moumac.spe.coding,],2,function(x) sum(x>0.05))/apply(mac.201.gper,2,function(x) sum(x>0.05))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.moumac.coding.perc, mou.moumac.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.moumac.coding.perc), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.moumac.coding.perc, rep(NA,201)), num=c(dim(dge.mou.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#ededed","#b30000"))
+```
+
+#####. hummou-specific
+```{r}
+hummou.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene=="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene!="", ]
+hummou.spe.coding <- hummou.spe[hum_type[hummou.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+```
+
+```{r}
+mou.hummou.spe.coding <- intersect(hummou.spe.coding$mmusculus_homolog_associated_gene_name,rownames(dge.mou.germ.norm))
+hum.hummou.spe.coding <-intersect(hummou.spe.coding$external_gene_name.x, rownames(dge.hum.germ.norm))
+```
+
+```{r fig.width=7,fig.height=5}
+mou.hummou.coding.perc <- apply(mou.201.cen[mou.hummou.spe.coding,],2,sum)/apply(mou.201.cen,2,sum)
+hum.hummou.coding.perc <- apply(hum.201.cen[hum.hummou.spe.coding,],2,sum)/apply(hum.201.cen,2,sum)
+
+ggplot(data.frame(ca.cen.int.600.pca$x, orth=c(hum.hummou.coding.perc, rep(0,201), mou.hummou.coding.perc), num=c(dim(dge.mou.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+### int.genes
+```{r fig.width=7,fig.height=5}
+hum.int.perc <- apply(hum.201.cen[int.genes$external_gene_name.x,],2,sum)/apply(hum.201.cen,2,sum)
+
+mac.int.perc <- apply(mac.201.cen[int.genes$mmulatta_homolog_associated_gene_name,],2,sum)/apply(mac.201.cen,2,sum)
+
+mou.int.perc <- apply(mou.201.cen[int.genes$mmusculus_homolog_associated_gene_name,],2,sum)/apply(mou.201.cen,2,sum)
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.int.perc, mac.int.perc, mou.int.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.int.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.int.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.int.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
+```
+
+```{r fig.width=7,fig.height=5}
+hum.int.perc <- apply(hum.201.gper[int.genes$external_gene_name.x,],2,function(x) sum(x>0.1))/apply(hum.201.gper,2,function(x) sum(x>0.1))
+
+mac.int.perc <- apply(mac.201.gper[int.genes$mmulatta_homolog_associated_gene_name,],2,function(x) sum(x>0.1))/apply(mac.201.gper,2,function(x) sum(x>0.1))
+
+mou.int.perc <- apply(mou.201.gper[int.genes$mmusculus_homolog_associated_gene_name,],2,function(x) sum(x>0.1))/apply(mou.201.gper,2,function(x) sum(x>0.1))
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.int.perc, mac.int.perc, mou.int.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=log(orth), shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"),limits=c(-4, -2.75), oob = scales::squish) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.int.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=log(orth), shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"), limits=c(-4, -3), oob = scales::squish) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.int.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=log(orth), shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"),limits=c(-4, -2.75), oob = scales::squish) 
+
+dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.int.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
+ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=log(orth), shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000"),limits=c(-4, -3), oob = scales::squish) 
+```
+
+
+```{r fig.width=8, fig.height=4}
+dat <- data.frame(traj = c(hum.traj,mac.traj,mou.traj), spe=c(rep("Human",length(hum.traj)),rep("Monkey",length(mac.traj)), rep("Mouse",length(mou.traj))))
+ggplot(dat, aes(factor(spe), traj)) + geom_violin(aes(fill=factor(spe))) + coord_flip() + labs(y="Pseudo-time from monocle",x="Species")
+```
+
+```{r fig.width=7,fig.height=5}
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),2,rep(1,142), rep(3,58),2, rep(1,200))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + scale_shape_manual(values = c(20, 17, 3))
+```
+
+Correlation matrix
+```{r fig.height=8, fig.width=9}
+ca.cen.int.cor <- cor <- cor(ca.cen.int.600.norm[, c(rep(TRUE,201),rep(TRUE,143),rep(FALSE,58), rep(TRUE,201))],method = "spearman")
+rownames(ca.cen.int.cor) <- colnames(ca.cen.int.cor) <- c(paste0("H",c(1:201)), paste0("M",c(1:143)), paste0("m",c(1:201)))
+Heatmap(ca.cen.int.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+
+```{r}
+rmmac <- c(FALSE,rep(TRUE,200),FALSE, rep(TRUE,142),rep(FALSE,58), FALSE, rep(TRUE,200))
+x <- ca.cen.int.600.pca$x[rmmac,c(1,3)]
+fit <- principal_curve(x)
+```
+
+```{r fig.width=7,fig.height=5}
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),2,rep(1,142), rep(3,58),2, rep(1,200))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + scale_shape_manual(values = c(20, 17, 3)) + geom_line(data=data.frame(fit$s), aes(PC1, PC3))
+```
+
+
+
+```{r fig.width=7,fig.height=5}
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),2,rep(1,142), rep(3,58),2, rep(1,200))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + scale_shape_manual(values = c(20, 17, 3)) + geom_line(data=data.frame(fit$s), aes(PC1, PC3)) + geom_segment(aes(x=x,y=y,xend=xend,yend=yend), colour="grey", size=0.2, data=data.frame(x=ca.cen.int.600.pca$x[rmmac,"PC1"], y=ca.cen.int.600.pca$x[rmmac,"PC3"], xend=fit$s[,"PC1"], yend=fit$s[,"PC3"]))
+```
+
+```{r fig.width=8, fig.height=4}
+dat <- data.frame(traj = fit$lambda, spe=c(rep("Human",200),rep("Monkey",142), rep("Mouse",200)))
+ggplot(dat, aes(factor(spe), traj)) + geom_violin(aes(fill=factor(spe))) + coord_flip() + labs(y="Pseudo-time from principle curve",x="Species")
+```
+
+```{r fig.width=8, fig.height=4}
+dat <- data.frame(traj = c(unlist(lapply(c(1:20),function(x) rep(x, hum.20.lens[x]))), unlist(lapply(c(1:20),function(x) rep(x, mac.20.lens[x]))) ,unlist(lapply(c(1:20),function(x) rep(x, mou.20.lens[x])))), spe=c(unlist(lapply(c(1:20),function(x) rep("Human", hum.20.lens[x]))), unlist(lapply(c(1:20),function(x) rep("Monkey", mac.20.lens[x]))) ,unlist(lapply(c(1:20),function(x) rep("Mouse", mou.20.lens[x])))))
+ggplot(dat, aes(factor(spe), traj)) + geom_violin(aes(fill=factor(spe))) + coord_flip() + labs(y="Pseudo-time from principle curve",x="Species")
+```
+
+##20 cluster centoids by cutting the principle curve to 20 segments. Warping
+```{r}
+pc.len <- max(fit$lambda)
+pc.step <- (pc.len + 0.01)/20 ##add 0.01 to include the last point 
+hum.lambda <- fit$lambda[1:200]
+hum.20.warped.cen <- matrix(0, nrow=dim(dge.hum.germ.norm)[1], ncol=20)
+hum.20.lens <- c()
+for(i in c(1:20)){
+  segs <- which(hum.lambda >= pc.step*(i-1) & hum.lambda < pc.step*i)
+  cells <- unlist(lapply(segs,function(x) hummac.mapping$refAssign[[x]]))
+  hum.20.lens <- c(hum.20.lens, length(cells))
+  hum.20.warped.cen[,i] <- apply(dge.hum.germ.norm[,cells],1,mean)
+}
+
+mac.lambda <- fit$lambda[201:342]
+mac.20.warped.cen <- matrix(0, nrow=dim(dge.mac.germ.norm)[1], ncol=20)
+mac.20.lens <- c()
+for(i in c(1:20)){
+  segs <- which(mac.lambda >= pc.step*(i-1) & mac.lambda < pc.step*i)
+  cells <- unlist(lapply(segs,function(x) hummac.mapping$queryAssign[[x]]))
+  mac.20.lens <- c(mac.20.lens, length(cells))
+  mac.20.warped.cen[,i] <- apply(dge.mac.germ.norm[,cells],1,mean)
+}
+
+mou.lambda <- fit$lambda[343:542]
+mou.20.warped.cen <- matrix(0, nrow=dim(dge.mou.germ.norm)[1], ncol=20)
+mou.20.lens <- c()
+for(i in c(1:20)){
+  segs <- which(mou.lambda >= pc.step*(i-1) & mou.lambda < pc.step*i)
+  cells <- unlist(lapply(segs,function(x) hummou.mapping$queryAssign[[x]]))
+  mou.20.lens <- c(mou.20.lens, length(cells))
+  mou.20.warped.cen[,i] <- apply(dge.mou.germ.norm[,cells],1,mean)
+}
+```
+
+```{r}
+rownames(hum.20.warped.cen) <- rownames(dge.hum.germ.norm)
+rownames(mac.20.warped.cen) <- rownames(dge.mac.germ.norm)
+rownames(mou.20.warped.cen) <- rownames(dge.mou.germ.norm)
+```
+
+
+PCA for aligned 20 clusters
+```{r}
+aligned.20.cen <- cbind(hum.20.warped.cen[int.genes$external_gene_name.x,], mac.20.warped.cen[int.genes$mmulatta_homolog_associated_gene_name,], mou.20.warped.cen[int.genes$mmusculus_homolog_associated_gene_name,])
+```
+
+```{r fig.width=7,fig.height=5}
+aligned.20.cen.norm <- apply(aligned.20.cen,2, function(x) x/sum(x)*1e4)
+aligned.20.cen.pca <- prcomp(t(log(aligned.20.cen.norm+1)), scale. = TRUE, center = TRUE)
+
+ggplot(data.frame(aligned.20.cen.pca$x, species=factor(c(rep("Human",20),rep("Monkey",20),rep("Mouse",20))),num=c(hum.20.lens,mac.20.lens,mou.20.lens)), aes(PC1,PC2)) + geom_point(aes(colour=species, size=num))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+```
+
+With SPG
+```{r}
+aligned.21.cen <- cbind(dge.hum.spg.cen[int.genes$external_gene_name.x],hum.20.warped.cen[int.genes$external_gene_name.x,], dge.mac.spg.cen[int.genes$mmulatta_homolog_associated_gene_name],mac.20.warped.cen[int.genes$mmulatta_homolog_associated_gene_name,], dge.mou.spg.cen[int.genes$mmusculus_homolog_associated_gene_name],mou.20.warped.cen[int.genes$mmusculus_homolog_associated_gene_name,])
+```
+
+```{r fig.width=7,fig.height=5}
+aligned.21.cen.norm <- apply(aligned.21.cen,2, function(x) x/sum(x)*1e4)
+aligned.21.cen.pca <- prcomp(t(log(aligned.21.cen.norm+1)), scale. = TRUE, center = TRUE)
+#aligned.21.cen.repca <- prcomp(aligned.21.cen.pca$x[,c(1:2)], scale. = TRUE, center = TRUE)
+
+ggplot(data.frame(aligned.21.cen.pca$x, species=factor(c(rep("Human",21),rep("Monkey",21),rep("Mouse",21))),num=c(dim(dge.hum.spg.raw)[2],hum.20.lens,dim(dge.mac.spg.raw)[2],mac.20.lens,dim(dge.mou.spg.raw)[2],mou.20.lens),traj=rep(c(2,rep(1,20)),3)), aes(PC1,PC3)) + geom_point(aes(colour=species, size=num, shape=factor(traj)))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+```
+
+```{r}
+col_fun = colorRamp2(c(-2, 1, 3.5), c("blue", "white", "red"))
+```
+
+```{r}
+aligned.20.cen.cor <- cor(log(aligned.20.cen+1),method="spearman")
+Heatmap(aligned.20.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE,col = col_fun(seq(-3,4)))
+Heatmap(aligned.20.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+```{r}
+aligned.20.all.cen <- cbind(hum.20.warped.cen[humMacMouOrth.1to1.in$external_gene_name.x,], mac.20.warped.cen[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,], mou.20.warped.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,])
+```
+
+```{r}
+aligned.20.all.cen.cor <- cor(log(aligned.20.all.cen+1),method="spearman")
+Heatmap(aligned.20.all.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+
+```{r}
+pc.len <- max(fit$lambda)
+pc.step <- (pc.len + 0.01)/10 ##add 0.01 to include the last point 
+hum.lambda <- fit$lambda[2:201]
+hum.10.warped.cen <- matrix(0, nrow=dim(dge.hum.germ.norm)[1], ncol=10)
+for(i in c(1:10)){
+  segs <- which(hum.lambda >= pc.step*(i-1) & hum.lambda < pc.step*i)
+  hum.10.warped.cen[,i] <- apply(dge.hum.germ.norm[,unlist(lapply(segs,function(x) hummac.mapping$refAssign[[x]]))],1,mean)
+}
+
+mac.lambda <- fit$lambda[203:342]
+mac.10.warped.cen <- matrix(0, nrow=dim(dge.mac.germ.norm)[1], ncol=10)
+for(i in c(1:10)){
+  segs <- which(mac.lambda >= pc.step*(i-1) & mac.lambda < pc.step*i)
+  mac.10.warped.cen[,i] <- apply(dge.mac.germ.norm[,unlist(lapply(segs,function(x) hummac.mapping$queryAssign[[x]]))],1,mean)
+}
+
+mou.lambda <- fit$lambda[344:543]
+mou.10.warped.cen <- matrix(0, nrow=dim(dge.mou.germ.norm)[1], ncol=10)
+for(i in c(1:10)){
+  segs <- which(mou.lambda >= pc.step*(i-1) & mou.lambda < pc.step*i)
+  mou.10.warped.cen[,i] <- apply(dge.mou.germ.norm[,unlist(lapply(segs,function(x) hummou.mapping$queryAssign[[x]]))],1,mean)
+}
+```
+
+```{r}
+rownames(hum.10.warped.cen) <- rownames(dge.hum.germ.norm)
+rownames(mac.10.warped.cen) <- rownames(dge.mac.germ.norm)
+rownames(mou.10.warped.cen) <- rownames(dge.mou.germ.norm)
+```
+
+
+PCA for aligned 10 clusters
+```{r}
+aligned.10.cen <- cbind(hum.10.warped.cen[int.genes$external_gene_name.x,], mac.10.warped.cen[int.genes$mmulatta_homolog_associated_gene_name,], mou.10.warped.cen[int.genes$mmusculus_homolog_associated_gene_name,])
+```
+
+```{r fig.width=7,fig.height=5}
+aligned.10.cen.norm <- apply(aligned.10.cen,2, function(x) x/sum(x)*1e4)
+aligned.10.cen.pca <- prcomp(t(log(aligned.10.cen.norm+1)), scale. = TRUE, center = TRUE)
+
+ggplot(data.frame(aligned.10.cen.pca$x, species=factor(c(rep("Human",10),rep("Monkey",10),rep("Mouse",10)))), aes(PC1,PC3)) + geom_point(aes(colour=species))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+```
+
+```{r}
+aligned.10.cen.cor <- cor(log(aligned.10.cen+1),method="spearman")
+Heatmap(aligned.10.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+K-means genes clustering
+
+add SPG
+```{r}
+hum.cen <- cbind(dge.hum.spg.cen[humMacMouOrth.1to1.in$external_gene_name.x], aligned.20.all.cen[,c(1:20)])
+mac.cen <- cbind(dge.mac.spg.cen[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name], aligned.20.all.cen[,c(21:40)])
+mou.cen <- cbind(dge.mou.spg.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name], aligned.20.all.cen[,c(41:60)])
+```
+
+```{r}
+hum.cen.norm.lg <- log(apply(hum.cen,2,function(x) x/sum(x)*1e4)+1)
+mac.cen.norm.lg <- log(apply(mac.cen,2,function(x) x/sum(x)*1e4)+1)
+mou.cen.norm.lg <- log(apply(mou.cen,2,function(x) x/sum(x)*1e4)+1)
+
+hum.cen.std <- t(apply(hum.cen.norm.lg,1,function(x) (x-mean(x))/sd(x)))
+mac.cen.std <- t(apply(mac.cen.norm.lg,1,function(x) (x-mean(x))/sd(x)))
+mou.cen.std <- t(apply(mou.cen.norm.lg,1,function(x) (x-mean(x))/sd(x)))
+```
+
+1. HVGs
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(hum.cen.norm.lg,1,mean)
+g.var <- apply(hum.cen.norm.lg,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+hum.hvgs <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.2]
+abline(h=0.2)
+abline(v=0.2)
+length(hum.hvgs)
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mac.cen.norm.lg,1,mean)
+g.var <- apply(mac.cen.norm.lg,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+mac.hvgs <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.2]
+abline(h=0.2)
+abline(v=0.2)
+length(mac.hvgs)
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mou.cen.norm.lg,1,mean)
+g.var <- apply(mou.cen.norm.lg,1,var)
+plot(g.mean, g.var/g.mean, cex=0.5)
+abline(h=0.2)
+abline(v=0.2)
+mou.hvgs <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.2]
+length(mou.hvgs)
+```
+
+```{r}
+set.seed(100)
+colnames(hum.cen.std) <- c(1:21)
+hum.hvg.warped.20.kmeans <- kmeans(hum.cen.std[hum.hvgs, ],6)
+table(hum.hvg.warped.20.kmeans$cluster)
+for(i in c(1:6)){
+dr = Heatmap(hum.cen.std[names(which(hum.hvg.warped.20.kmeans$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+```{r}
+set.seed(123)
+colnames(mac.cen.std) <- c(1:21)
+mac.hvg.warped.20.kmeans <- kmeans(mac.cen.std[mac.hvgs, ],6)
+table(mac.hvg.warped.20.kmeans$cluster)
+for(i in c(1:6)){
+dr = Heatmap(mac.cen.std[names(which(mac.hvg.warped.20.kmeans$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+```{r}
+set.seed(100)
+colnames(mou.cen.std) <- c(1:21)
+mou.hvg.warped.20.kmeans <- kmeans(mou.cen.std[mou.hvgs, ],6)
+table(mou.hvg.warped.20.kmeans$cluster)
+for(i in c(1:6)){
+dr = Heatmap(mou.cen.std[names(which(mou.hvg.warped.20.kmeans$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+
+
+```{r}
+
+```

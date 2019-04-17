@@ -258,6 +258,186 @@ p2 <- ggMarginal(p, type="density")
 
 grid.arrange(p1, p2, ncol=1)
 ```
+
+
+kmeans for all genes
 ```{r}
-a=1
+hum.spg.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/HumanSPGCluster_AllGene_Centroids.txt",header = TRUE, row.names = 1)
+mac.spg.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MonkeySPGCluster_AllGene_Centroids.txt",header = TRUE, row.names = 1)
+mou.spg.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.txt",header = TRUE, row.names = 1)
+
+hum.spg.cen.lg = log(hum.spg.cen + 1)
+mac.spg.cen.lg = log(mac.spg.cen + 1)
+mou.spg.cen.lg = log(mou.spg.cen + 1)
+
+hum.spg.cen.std = t(apply(hum.spg.cen.lg, 1, function(x) (x-mean(x))/sd(x)))
+mac.spg.cen.std = t(apply(mac.spg.cen.lg, 1, function(x) (x-mean(x))/sd(x)))
+mou.spg.cen.std = t(apply(mou.spg.cen.lg, 1, function(x) (x-mean(x))/sd(x)))
 ```
+
+HVG
+
+```{r}
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+
+```
+
+```{r}
+library(viridis)
+library(ggExtra)
+library(gridExtra)
+```
+
+
+plot the density.
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(hum.spg.cen.lg,1,mean)
+g.var <- apply(hum.spg.cen.lg,1,var)
+
+g.var <- g.var[g.mean!=0]
+g.mean <- g.mean[g.mean!=0]
+hum.spg.hvg <- names(g.mean)[g.mean > 0.1 & g.var/g.mean > 0.1]
+length(hum.spg.hvg)
+hum.gen <- data.frame(mean = g.mean, varmean = g.var/g.mean)
+hum.gen$den <- get_density(hum.gen$mean, hum.gen$varmean, n=100)
+
+p <- ggplot(hum.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Human HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.1) + geom_vline(xintercept = 0.1)
+p1 <- ggMarginal(p, type="density")
+grid.arrange(p1, ncol=1)
+```
+
+
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mac.spg.cen.lg,1,mean)
+g.var <- apply(mac.spg.cen.lg,1,var)
+g.var <- g.var[g.mean!=0]
+g.mean <- g.mean[g.mean!=0]
+
+mac.spg.hvg <- names(g.mean)[g.mean > 0.1 & g.var/g.mean > 0.1]
+length(mac.spg.hvg)
+mac.gen <- data.frame(mean = g.mean, varmean = g.var/g.mean)
+mac.gen$den <- get_density(mac.gen$mean, mac.gen$varmean, n=100)
+
+p <- ggplot(mac.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Monkey HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.1) + geom_vline(xintercept = 0.1)
+p2 <- ggMarginal(p, type="density")
+grid.arrange(p2, ncol=1)
+```
+
+```{r fig.width=5,fig.height=5}
+g.mean <- apply(mou.spg.cen.lg,1,mean)
+g.var <- apply(mou.spg.cen.lg,1,var)
+g.var <- g.var[g.mean!=0]
+g.mean <- g.mean[g.mean!=0]
+
+mou.spg.hvg <- names(g.mean)[g.mean > 0.1 & g.var/g.mean > 0.06]
+length(mou.spg.hvg)
+
+mou.gen <- data.frame(mean = g.mean, varmean = g.var/g.mean)
+mou.gen$den <- get_density(mou.gen$mean, mou.gen$varmean, n=100)
+
+p <- ggplot(mou.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Mouse HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.06) + geom_vline(xintercept = 0.1)
+p2 <- ggMarginal(p, type="density")
+grid.arrange(p2, ncol=1)
+```
+
+##. Asking for 3 clusters from kmeans
+```{r}
+colnames(hum.spg.cen.std) <- c(1:6)
+set.seed(123)
+hum.spg.kmean <- kmeans(hum.spg.cen.std[hum.spg.hvg,],3)
+for(i in c(1:3)){
+dr = Heatmap(hum.spg.cen.std[names(which(hum.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+colnames(mac.spg.cen.std) <- c(1:6)
+set.seed(123)
+mac.spg.kmean <- kmeans(mac.spg.cen.std[mac.spg.hvg,],3)
+for(i in c(1:3)){
+dr = Heatmap(mac.spg.cen.std[names(which(mac.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+set.seed(123)
+colnames(mou.spg.cen.std) <- c(1:6)
+mou.spg.kmean <- kmeans(mou.spg.cen.std[mou.spg.hvg,],3)
+for(i in c(1:3)){
+dr = Heatmap(mou.spg.cen.std[names(which(mou.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+##. Asking for 4 clusters from kmeans
+```{r}
+colnames(hum.spg.cen.std) <- c(1:6)
+set.seed(123)
+hum.spg.kmean <- kmeans(hum.spg.cen.std[hum.spg.hvg,],4)
+for(i in c(1:4)){
+dr = Heatmap(hum.spg.cen.std[names(which(hum.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+colnames(mac.spg.cen.std) <- c(1:6)
+set.seed(123)
+mac.spg.kmean <- kmeans(mac.spg.cen.std[mac.spg.hvg,],4)
+for(i in c(1:4)){
+dr = Heatmap(mac.spg.cen.std[names(which(mac.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+```{r}
+set.seed(123)
+colnames(mou.spg.cen.std) <- c(1:6)
+mou.spg.kmean <- kmeans(mou.spg.cen.std[mou.spg.hvg,],4)
+for(i in c(1:4)){
+dr = Heatmap(mou.spg.cen.std[names(which(mou.spg.kmean$cluster==i)),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE,row_title = i)
+draw(dr)
+}
+```
+
+Write Kmeans to file
+```{r}
+len <- max(max(table(hum.spg.kmean$cluster)))
+hum.hvgs.kmean.write <- c()
+stages <- c(3,1,4,2)
+for(i in stages){
+  genes <- names(which(hum.spg.kmean$cluster==i))
+  hum.hvgs.kmean.write <- cbind(hum.hvgs.kmean.write, c(genes, rep("", len-length(genes) )))
+}
+write.table(hum.hvgs.kmean.write, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/hum.spg.kmean.allgene.list.txt", quote = FALSE, row.names = FALSE,sep = "\t")
+
+len <- max(max(table(mac.spg.kmean$cluster)))
+mac.hvgs.kmean.write <- c()
+stages <- c(2,4,3,1)
+for(i in stages){
+  genes <- names(which(mac.spg.kmean$cluster==i))
+  mac.hvgs.kmean.write <- cbind(mac.hvgs.kmean.write, c(genes, rep("", len-length(genes) )))
+}
+write.table(mac.hvgs.kmean.write, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/mac.spg.kmean.allgene.list.txt", quote = FALSE, row.names = FALSE,sep = "\t")
+
+len <- max(max(table(mou.spg.kmean$cluster)))
+mou.hvgs.kmean.write <- c()
+stages <- c(3,1,4,2)
+for(i in stages){
+  genes <- names(which(mou.spg.kmean$cluster==i))
+  mou.hvgs.kmean.write <- cbind(mou.hvgs.kmean.write, c(genes, rep("", len-length(genes) )))
+}
+write.table(mou.hvgs.kmean.write, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/mou.spg.kmean.allgene.list.txt", quote = FALSE, row.names = FALSE,sep = "\t")
+```
+
+```{r}
+
+```
+
+
+

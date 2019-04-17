@@ -72,6 +72,23 @@ sum(mouMacOrth$mmulatta_homolog_orthology_confidence == 0)
 #11273  Low confidence
 ```
 
+###. Mouse-Macaque
+```{r}
+ensembl = useDataset("mmulatta_gene_ensembl",mart=ensembl)
+#searchAttributes(mart = ensembl, pattern = "mmulatta")
+
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name", "mmusculus_homolog_perc_id","mmusculus_homolog_perc_id_r1","mmusculus_homolog_goc_score","mmusculus_homolog_wga_coverage","mmusculus_homolog_dn","mmusculus_homolog_ds","mmusculus_homolog_orthology_confidence","mmusculus_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+macMou <- getBM(attributes = attributes,mart = ensembl)
+dim(macMou)
+
+#Remove non-homologs
+macMouOrth <- macMou[macMou$mmusculus_homolog_ensembl_gene!='',]
+dim(macMouOrth)  ##25112
+
+```
+
 ###. Human-Macaque-Mouse
 
 ```{r}

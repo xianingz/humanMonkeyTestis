@@ -302,6 +302,13 @@ write.xlsx2(mac.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqu
 write.xlsx2(mou.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.xlsx", sheetName = "Mouse", append = FALSE, row.names = TRUE)
 ```
 
+##Write to txt
+```{r}
+write.table(hum.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/HumanSPGCluster_AllGene_Centroids.txt", quote = FALSE, row.names = TRUE, sep="\t")
+write.table(mac.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MonkeySPGCluster_AllGene_Centroids.txt", quote = FALSE, row.names = TRUE, sep="\t")
+write.table(mou.spg.all.cen[,c(1:6)], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.txt", quote = FALSE, row.names = TRUE, sep="\t")
+```
+
 Centroid rank correlation for three species
 ```{r fig.width=5, fig.height=4.5}
 hum.spg.cor <- cor(hum.spg.all.cen[,c(1:6)], method="spearman")
@@ -349,4 +356,98 @@ for(i in c(1:8)){
   plist[[i]] = p
 }
 do.call("grid.arrange", c(plist, ncol=4))
+```
+
+##. Markers for clusters 1 and 2 in mouse
+```{r}
+spg.cca@meta.data$speclus <- paste0(spg.cca@meta.data$species,"_", spg.cca@meta.data$res.0.6.ord)
+spg.cca <- SetAllIdent(spg.cca, id = "speclus")
+marker1over2 <- FindMarkers(spg.cca, ident.1 = "Mouse_1", ident.2 = "Mouse_2", logfc.threshold = 0.6, min.diff.pct = 0.1)
+```
+
+```{r}
+rownames(humMacMouOrth.1to1.in) = humMacMouOrth.1to1.in$external_gene_name.x
+rownames(marker1over2) <- humMacMouOrth.1to1.in[rownames(marker1over2),]$mmusculus_homolog_associated_gene_name
+```
+
+```{r}
+write.table(marker1over2, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/MakersMouseClust1vs2.txt",quote = FALSE, row.names = TRUE, col.names = TRUE, sep = "\t")
+```
+
+##Call markers using all genes for each species
+###Human
+
+spg.raw file used below are files that removed cluster 7-8 in SPG CCA clusterign 
+```{r}
+dge.hum.spg <- CreateSeuratObject(raw.data = dge.hum.spg.raw)
+dge.hum.spg <- NormalizeData(object = dge.hum.spg, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.hum.spg <- ScaleData(object = dge.hum.spg,vars.to.regress = c("nUMI"))
+```
+
+```{r}
+dge.hum.spg@meta.data$clus <- spg.cca@meta.data[dge.hum.spg@cell.names,]$res.0.6.ord
+dge.hum.spg <- SetIdent(dge.hum.spg, ident.use = dge.hum.spg@meta.data$clus)
+```
+
+```{r}
+hum.spg.markers <- list()
+for(i in c(1:6)){
+  hum.spg.markers[[i]] <- FindMarkers(dge.hum.spg, ident.1 = i, logfc.threshold = 0.7, min.pct = 0.1)
+}
+```
+```{r}
+for(i in c(1:6)){
+if(i==1){
+  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_hum_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_hum_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
+```
+
+```{r}
+dge.mac.spg <- CreateSeuratObject(raw.data = dge.mac.spg.raw)
+dge.mac.spg <- NormalizeData(object = dge.mac.spg, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.mac.spg <- ScaleData(object = dge.mac.spg,vars.to.regress = c("nUMI"))
+
+dge.mac.spg@meta.data$clus <- spg.cca@meta.data[dge.mac.spg@cell.names,]$res.0.6.ord
+dge.mac.spg <- SetIdent(dge.mac.spg, ident.use = dge.mac.spg@meta.data$clus)
+
+mac.spg.markers <- list()
+for(i in c(1:6)){
+  mac.spg.markers[[i]] <- FindMarkers(dge.mac.spg, ident.1 = i, logfc.threshold = 0.7, min.pct = 0.1)
+}
+
+for(i in c(1:6)){
+if(i==1){
+  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mac_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mac_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
+```
+
+```{r}
+dge.mou.spg <- CreateSeuratObject(raw.data = dge.mou.spg.raw)
+dge.mou.spg <- NormalizeData(object = dge.mou.spg, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+dge.mou.spg <- ScaleData(object = dge.mou.spg,vars.to.regress = c("nUMI"))
+
+dge.mou.spg@meta.data$clus <- spg.cca@meta.data[dge.mou.spg@cell.names,]$res.0.6.ord
+dge.mou.spg <- SetIdent(dge.mou.spg, ident.use = dge.mou.spg@meta.data$clus)
+
+mou.spg.markers <- list()
+for(i in c(1:6)){
+  mou.spg.markers[[i]] <- FindMarkers(dge.mou.spg, ident.1 = i, logfc.threshold = 0.5, min.pct = 0.1)
+}
+
+for(i in c(1:6)){
+if(i==1){
+  write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
 ```
