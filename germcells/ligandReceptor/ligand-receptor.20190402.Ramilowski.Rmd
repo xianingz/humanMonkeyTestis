@@ -1,0 +1,207 @@
+
+#Ligand-receptor analysis for SPG cells and Somatic cells in Mouse (using ligand/receptor interaction data from Ramilowski_2015)
+
+567 Receptors
+586 Ligands
+2015 Interactions
+
+##1. Select highly variable genes from somatic and germline clusters clusters using Jun's code
+```{r}
+soma.mean <- as.matrix(read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/MouseAdultST25_7SomaticCellTypes_Centroids_Qianyi.txt",header = T,sep="\t",row.names = 1))
+germ.mean <- as.matrix(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.txt",header = T,sep="\t",row.names = 1))
+##data source: https://umich.app.box.com/folder/31463886658
+##First 1-Mar and 2-Mar are removed because of duplicates.
+```
+
+
+###. Select highly variable genes across stages.
+1: SPG
+2-3: prelep
+4-8: spermatocytes
+9-11: spermatids
+12: ES
+```{r}
+g.mean<-apply(germ.mean,1,mean)
+g.var<-apply(germ.mean,1,var)
+
+s.mean <- apply(soma.mean,1,mean)
+s.var <- apply(soma.mean,1,var)
+
+plot(g.mean,g.var/(g.mean),cex=0.5,ylim=c(0,3),main="Germ cell")
+abline(h=0.2)
+abline(v=0.2)
+
+plot(s.mean,s.var/(s.mean),cex=0.5,ylim=c(0,3),main="Somatic cell")
+abline(h=0.2)
+abline(v=0.2)
+
+filter.g<-(g.mean>0.15)&( g.var/g.mean>0.1)
+sum(filter.g)
+filter.s<-(s.mean>0.2)&( s.var/s.mean>0.1)
+sum(filter.s)
+```
+
+```{r}
+somaGenes <- rownames(soma.mean)[filter.s]
+germGenes <- rownames(germ.mean)[filter.g]
+```
+
+##2. Read in Ligand and Receptor data
+```{r}
+lrinter <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/Ramilowski_LigRec_Mouse.txt",header = FALSE)
+ligands <- unique(lrinter$V1)
+receptors <- unique(lrinter$V2)
+```
+
+##3. Extract Ligands and Receptors from Germline and Sertoli cells
+```{r}
+germ.ligands <- intersect(germGenes,ligands)
+germ.receptors <- intersect(germGenes,receptors)
+soma.ligands <- intersect(somaGenes,ligands)
+soma.receptors <- intersect(somaGenes,receptors)
+length(germ.ligands) #Number of ligands in germline cells
+## [1] 34
+length(germ.receptors) #Number of receptors in germline cells
+## [1] 30
+length(soma.ligands) #Number of ligands in somatic cells
+## [1] 126
+length(soma.receptors) #Number of receptors in somatic cells
+## [1] 133
+```
+
+##4. Find ligand receptor pairs from highly variable genes
+```{r}
+ligrec <- function(ligands,receptors){
+  lig.rec.pairs <- c()
+  for(i in ligands){
+    rec.db <- lrinter[lrinter[,1]==i,2]
+    recs <- intersect(rec.db,receptors)
+    for(j in recs){
+      lig.rec.pairs <- rbind(lig.rec.pairs,c(i,j))
+    }
+  }
+  return(lig.rec.pairs)
+}
+lig.rec.germ.soma <- ligrec(germ.ligands,soma.receptors)
+lig.rec.soma.germ <- ligrec(soma.ligands,germ.receptors)
+lig.rec.soma.soma <- ligrec(soma.ligands,soma.receptors)
+lig.rec.germ.germ <- ligrec(germ.ligands,germ.receptors)
+dim(lig.rec.germ.soma)[1] # Number of pairs for Ligand(Germ)-Receptor(Soma)
+## [1] 56
+dim(lig.rec.soma.germ)[1] # Number of pairs for Ligand(Soma)-Receptor(Germ)
+## [1] 60
+dim(lig.rec.soma.soma)[1] # Number of pairs for Ligand(Soma)-Receptor(Soma)
+## [1] 228
+dim(lig.rec.germ.germ)[1]
+## [1] 12
+```
+
+##7. Use multiplication of expression values as interaction score
+```{r}
+mulInt <- function(inters, ligandexp, receptorexp){
+  summatrix <- matrix(0, nrow = dim(ligandexp)[2], ncol = dim(receptorexp)[2])
+  for(i in c(1:dim(inters)[1])){
+    #c(lig,rec) <- inters[i,]
+    lig <- inters[i,1]
+    rec <- inters[i,2]
+    summatrix <- summatrix + ligandexp[lig,] %*% t(receptorexp[rec,])
+  }
+  rownames(summatrix) <- c(1:dim(summatrix)[1])
+  colnames(summatrix) <- c(1:dim(summatrix)[2])
+  return(summatrix)
+}
+lig.rec.germ.soma.mul <- mulInt(lig.rec.germ.soma, germ.mean, soma.mean)
+lig.rec.soma.germ.mul <- mulInt(lig.rec.soma.germ, soma.mean, germ.mean)
+lig.rec.soma.soma.mul <- mulInt(lig.rec.soma.soma, soma.mean, soma.mean)
+```
+
+```{r}
+library(ComplexHeatmap)
+```
+
+```{r}
+soma.lab <- c("InnateLymphoid","Macrophage","Endothelial","Myoid","Leydig","Sertoli","Unknown")
+colnames(lig.rec.germ.soma.mul) <- soma.lab
+rownames(lig.rec.soma.germ.mul) <- soma.lab
+rownames(lig.rec.soma.soma.mul) <- soma.lab
+colnames(lig.rec.soma.soma.mul) <- soma.lab
+Heatmap(lig.rec.germ.soma.mul, cluster_rows = FALSE, cluster_columns = FALSE)## Ligands in Germ cells and Receptors in Somatic cells
+Heatmap(lig.rec.soma.germ.mul, cluster_rows = FALSE, cluster_columns = FALSE) ## Ligands in Somatic cells and receptors in Germ cells.
+Heatmap(lig.rec.soma.soma.mul, cluster_rows = FALSE, cluster_columns = FALSE)## Ligands in Somatic cells and receptors in Somatic cells.
+```
+##8. Interaction plot
+```{r}
+library(plotrix)
+library(shape)
+```
+
+Calculate score, rank score and select high interactions
+```{r eval=FALSE}
+germ.lab <- c(1:6)
+soma.lab <- c("InnateLymphoid","Macrophage","Endothelial","Myoid","Leydig","Sertoli","Unknown")
+lig.lab <- germ.lab
+rec.lab <- soma.lab
+lig.label <- "Germ"
+rec.label <- "Soma"
+int.plot <- function(lig.rec, lig.mean, rec.mean, lig.lab, rec.lab, lig.label, rec.label,lineup,perc,filename){
+pdf(filename,width = 6*lineup[2],height = 6*lineup[1])
+par(mfrow=lineup)
+for(ind in c(1:dim(lig.rec[,])[1])){
+perc=perc
+expmat <- mulInt(matrix(lig.rec[ind,],nrow = 1),lig.mean,rec.mean)
+expframe <- as.data.frame(as.table(expmat))
+expframe.sort <- expframe[order(expframe$Freq,decreasing = TRUE),]
+expframe.sel <- expframe.sort[c(1:floor(dim(expframe.sort)[1]*perc)),]
+lig.len = dim(lig.mean)[2]
+rec.len = dim(rec.mean)[2]
+plot(1, type="n", xlab="", ylab="", xlim=c(0, 12), ylim=c(0, max(lig.len,rec.len)+3),axes = FALSE) ##axes2 = FALSE
+lig.exp = lig.mean[lig.rec[ind,1],]
+rec.exp = rec.mean[lig.rec[ind,2],]
+
+for(i in c(1:lig.len)){
+  if(lig.len >= rec.len){
+    h = i
+  }else{
+    h = i + ceiling((rec.len-lig.len)/2)
+  }
+  draw.circle(3.5,h,(1/(1.5*pi))/max(lig.exp)*rev(lig.exp)[i],border = "#5a97e3",col = "#5a97e3")
+  text(3,h,labels = rev(lig.lab)[i],cex=1.2, adj=c(1,0.5))
+}
+text(3.5,max(lig.len,rec.len)+1.2,paste0(lig.label,"\n(ligand)"),cex=1.5)
+for(i in c(1:rec.len)){
+  if(lig.len <= rec.len){
+    h = i
+  }else{
+    h = i+ceiling((lig.len-rec.len)/2)
+  }
+  draw.circle(8.5,h,(1/(1.5*pi))/max(rec.exp)*rev(rec.exp)[i],border = "#e3a65a",col = "#e3a65a")
+  text(8.8,h,label = rev(rec.lab)[i],cex=1.2, adj=c(0,0.5))
+}
+text(8.5,max(lig.len,rec.len)+1.2,paste0(rec.label,"\n(receptor)"),cex = 1.5)
+shrink = 0.92
+for(i in c(1:dim(expframe.sel)[1])){
+  if(lig.len >= rec.len){
+    h1 = lig.len + 1
+    #h2 = lig.len + 1 - floor((lig.len - rec.len)/2)
+  }else{
+    #h2 = rec.len + 1
+    h1 = lig.len + 1 + ceiling((rec.len - lig.len)/2)
+    #h2 = rec.len + 1
+    #h1 = rec.len + 1
+  }
+  headx = 3.3+shrink*(5-0.6)
+  heady = h1-as.numeric(expframe.sel[i,1]) + shrink*(as.numeric(expframe.sel[i,1]) - sign(lig.len - rec.len)*floor(abs(lig.len - rec.len)/2) - as.numeric(expframe.sel[i,2]))
+  Arrows(3.8,h1-as.numeric(expframe.sel[i,1]),headx,heady,lwd = 5/max(expframe.sel[,3])*expframe.sel[i,3])
+}
+text(6,max(lig.len,rec.len)+2.4,paste(lig.rec[ind,1],lig.rec[ind,2],sep = "-"),cex=2)
+}
+dev.off()
+}
+```
+
+```{r eval=FALSE}
+int.plot(lig.rec.germ.soma, lig.mean = germ.mean, rec.mean = soma.mean, lig.lab = germ.lab, rec.lab = soma.lab, lig.label = "Germ", rec.label = "Soma",lineup = c(14,4), perc=0.2,filename="~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20190402_SPG_Soma/mouse/lig.rec.germ.soma.20per.pdf")
+int.plot(lig.rec.soma.germ, lig.mean = soma.mean, rec.mean = germ.mean, lig.lab = soma.lab, rec.lab = germ.lab, lig.label = "Soma", rec.label = "Germ",lineup = c(15,4), perc=0.2,filename="~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20190402_SPG_Soma/mouse/lig.rec.soma.germ.20per.pdf")
+int.plot(lig.rec.soma.soma, lig.mean = soma.mean, rec.mean = soma.mean, lig.lab = soma.lab, rec.lab = soma.lab, lig.label = "Soma", rec.label = "Soma",lineup = c(57,4), perc=0.2,filename="~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20190402_SPG_Soma/mouse/lig.rec.soma.soma.20per.pdf")
+int.plot(lig.rec.germ.germ, lig.mean = germ.mean, rec.mean = germ.mean, lig.lab = germ.lab, rec.lab = germ.lab, lig.label = "Germ", rec.label = "Germ",lineup = c(3,4), perc=0.2,filename="~/storage/HumanMacaqueMouseCompAnaysis/ligandReceptor/20190402_SPG_Soma/mouse/lig.rec.germ.germ.20per.pdf")
+```
