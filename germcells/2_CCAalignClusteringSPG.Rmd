@@ -346,8 +346,6 @@ do.call("grid.arrange", c(plist, ncol=4))
 
 
 
-
-
 ```{r fig.width=20, fig.height=9}
 plist <- list()
 for(i in c(1:8)){
@@ -393,15 +391,15 @@ dge.hum.spg <- SetIdent(dge.hum.spg, ident.use = dge.hum.spg@meta.data$clus)
 ```{r}
 hum.spg.markers <- list()
 for(i in c(1:6)){
-  hum.spg.markers[[i]] <- FindMarkers(dge.hum.spg, ident.1 = i, logfc.threshold = 0.7, min.pct = 0.1)
+  hum.spg.markers[[i]] <- FindMarkers(dge.hum.spg, ident.1 = i, logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
 }
 ```
 ```{r}
 for(i in c(1:6)){
 if(i==1){
-  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_hum_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_hum_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
 }else{
-  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_hum_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_hum_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
 }
 }
 ```
@@ -417,14 +415,14 @@ dge.mac.spg <- SetIdent(dge.mac.spg, ident.use = dge.mac.spg@meta.data$clus)
 
 mac.spg.markers <- list()
 for(i in c(1:6)){
-  mac.spg.markers[[i]] <- FindMarkers(dge.mac.spg, ident.1 = i, logfc.threshold = 0.7, min.pct = 0.1)
+  mac.spg.markers[[i]] <- FindMarkers(dge.mac.spg, ident.1 = i, logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
 }
 
 for(i in c(1:6)){
 if(i==1){
-  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mac_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mac_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
 }else{
-  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mac_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mac_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
 }
 }
 ```
@@ -440,14 +438,158 @@ dge.mou.spg <- SetIdent(dge.mou.spg, ident.use = dge.mou.spg@meta.data$clus)
 
 mou.spg.markers <- list()
 for(i in c(1:6)){
-  mou.spg.markers[[i]] <- FindMarkers(dge.mou.spg, ident.1 = i, logfc.threshold = 0.5, min.pct = 0.1)
+  mou.spg.markers[[i]] <- FindMarkers(dge.mou.spg, ident.1 = i, logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
 }
 
 for(i in c(1:6)){
 if(i==1){
-  write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+  write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
 }else{
-  write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+  write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
 }
 }
 ```
+
+Plot markers
+```{r}
+markers <- c("THY1", "SALL4", "PLZF", "ZBTB16", "ID4", "GFRA1", "ITGA6", "EPCAM", "PAX7", "BMI1", "EOMES", "UTF1", "UCHL1", "LIN28A", "LIN28B", "PIWIL4", "MORC1", "CDK17", "TSPAN33", "MAGEB2", "ITGA6", "MKI67", "L1TD1", "ID1", "ID3", "STRA8", "GPC3", "GPC4", "GPX1", "TCF3", "FMR1", "DNAJB6", "LENG8", "C19orf84", "ZNF428", "PSIP1", "SSFA2", "APOE", "CRYM")
+```
+
+
+```{r}
+humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
+spg.cca <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
+```
+
+```{r}
+redblue100.alpha<-rgb(read.table("~/storage/HumanMacaqueMouseCompAnaysis/redblue100.txt",sep='\t',row.names=1,header=T),alpha=0.8)
+
+set.ifnull=function(x,y) {
+  if(is.null(x)) return(y)
+  return(x)
+}
+translate.dim.code=function(reduction.use) {
+  if (reduction.use=="pca") return.code="PC"
+  if (reduction.use=="ica") return.code="IC"
+  if (reduction.use=="tsne") return.code="tSNE_"
+  if (reduction.use=="mds") return.code="MDS"
+  if (reduction.use=="umap") return.code="UMAP"
+  return(return.code)
+}
+
+plotgene <- function(gene){
+feature=features.plot=gene
+
+dim.1 = 1; dim.2 = 2; cells.use = NULL; pt.size = 1;
+pch.use = 16; reduction.use = "tsne";
+use.imputed = FALSE; no.axes = TRUE; no.legend = FALSE
+
+cells.use <- set.ifnull(cells.use, spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dim.code <- translate.dim.code(reduction.use)
+dim.codes <- paste(dim.code, c(dim.1, dim.2), sep = "")
+data.plot <- as.data.frame(spg.cca@dr$tsne@cell.embeddings[cells.use,])
+
+x1 <- paste(dim.code, dim.1, sep = "")
+x2 <- paste(dim.code, dim.2, sep = "")
+
+data.plot$x <- data.plot[cells.use, x1]
+data.plot$y <- data.plot[cells.use, x2]
+data.plot$pt.size <- pt.size
+data.use <- data.frame(t(spg.cca@data[feature,cells.use]))
+rownames(data.use)=feature
+
+data.gene0 <- na.omit(data.frame(data.use[feature, ]))
+data.plot$gene <- t(data.gene0)
+
+st6<- data.plot
+st6<-st6[order(st6[,6]),]
+z<-st6[,6]
+
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
+par(mar=c(0.5,0.5,2,0.5),mgp=c(1,0.5,0))
+z<-st6[,6]
+zcolor <- redblue100.alpha[40:100][(z - min(z))/diff(range(z))*60 + 1]
+plot(st6[,1],st6[,2], col=zcolor,pch=19,cex=0.3,cex.main=1.5,axes=F,main=features.plot,xlab="",ylab="")
+dev.off()
+}
+```
+
+```{r}
+for(i in intersect(markers, humMacMouOrth.1to1.in$external_gene_name.x)){
+  plotgene(i)
+}
+```
+
+```{r}
+markers2 <- c("RARA","RARB","RARG","RXRA","RXRB","ALDH1A1","ALDH1A2","ALDH1A3")
+for(i in intersect(markers2, humMacMouOrth.1to1.in$external_gene_name.x)){
+  plotgene(i)
+}
+```
+"RARA"    "RARB"    "RARG"    "RXRA"    "RXRB"    "ALDH1A2" "ALDH1A3" added to the three species SPG
+
+
+```{r fig.width=10,fig.height=20}
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/AlignedThreeSpecies_Violin.pdf",width = 10, height = 20)
+VlnPlot(object = spg.cca, features.plot = intersect(markers,humMacMouOrth.1to1.in$external_gene_name.x),nCol = 4,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6))
+dev.off()
+```
+
+```{r}
+dge.hum.spg.norm <- apply(dge.hum.spg.raw,2,function(x) x/sum(x)*1e4)
+dge.mac.spg.norm <- apply(dge.mac.spg.raw,2,function(x) x/sum(x)*1e4)
+dge.mou.spg.norm <- apply(dge.mou.spg.raw,2,function(x) x/sum(x)*1e4)
+```
+
+
+```{r}
+plts <- list()
+j=0
+for(i in intersect(markers, rownames(dge.hum.spg.norm))){
+  j = j+1
+  dat = data.frame(expr = log(dge.hum.spg.norm[i,]+1), ident = spg.cca@ident[colnames(dge.hum.spg.norm)])
+  plts[[j]] <- ggplot(dat, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle(i) + theme(legend.position = "none")
+}
+```
+
+```{r}
+library(gridExtra)
+```
+
+```{r fig.width=10, fig.height=30}
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/Hum_Violin.pdf",width = 10, height = 30)
+do.call("grid.arrange", c(plts, ncol=4))
+dev.off()
+```
+
+```{r}
+plts <- list()
+j=0
+#mac.markers <- humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x %in% markers]
+for(i in intersect(markers, rownames(dge.mac.spg.norm))){
+  j = j+1
+  dat = data.frame(expr = log(dge.mac.spg.norm[i,]+1), ident = spg.cca@ident[colnames(dge.mac.spg.norm)])
+  plts[[j]] <- ggplot(dat, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle(i) + theme(legend.position = "none")
+}
+
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/Mac_Violin.pdf",width = 10, height = 30)
+do.call("grid.arrange", c(plts, ncol=4))
+dev.off()
+```
+
+```{r}
+plts <- list()
+j=0
+mou.markers <- humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x %in% markers]
+for(i in mou.markers){
+  j = j+1
+  dat = data.frame(expr = log(dge.mou.spg.norm[i,]+1), ident = spg.cca@ident[colnames(dge.mou.spg.norm)])
+  plts[[j]] <- ggplot(dat, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle(i) + theme(legend.position = "none")
+}
+
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/Mou_Violin.pdf",width = 10, height = 30)
+do.call("grid.arrange", c(plts, ncol=4))
+dev.off()
+```
+
+

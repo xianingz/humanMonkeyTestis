@@ -1,0 +1,374 @@
+```{r}
+library(biomaRt) #Ensemble Gene 94
+ensembl <- useMart(host='http://oct2018.archive.ensembl.org', 
+                     biomart='ENSEMBL_MART_ENSEMBL')
+ensembl = useDataset("hsapiens_gene_ensembl",mart=ensembl)
+
+attributes = c("ensembl_gene_id","external_gene_name","mmulatta_homolog_ensembl_gene","mmulatta_homolog_associated_gene_name","mmulatta_homolog_perc_id","mmulatta_homolog_perc_id_r1","mmulatta_homolog_goc_score","mmulatta_homolog_wga_coverage","mmulatta_homolog_dn","mmulatta_homolog_ds","mmulatta_homolog_orthology_confidence","mmulatta_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+humMac <- getBM(attributes = attributes,mart = ensembl)
+dim(humMac)
+
+#Get all Human-Macaque gene pairs
+hum_type <- getBM(attributes = c("ensembl_gene_id","external_gene_name","gene_biotype"),mart = ensembl)
+```
+
+###. Human-Mouse
+```{r}
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name", "mmusculus_homolog_perc_id","mmusculus_homolog_perc_id_r1","mmusculus_homolog_goc_score","mmusculus_homolog_wga_coverage","mmusculus_homolog_dn","mmusculus_homolog_ds","mmusculus_homolog_orthology_confidence","mmusculus_homolog_orthology_type")
+
+humMou <- getBM(attributes = attributes,mart = ensembl)
+dim(humMou)
+```
+
+```{r}
+humgene <- unique(humMac$ensembl_gene_id)
+humMacMou.AllGene <- merge(humMac, humMou, by = "ensembl_gene_id")
+rownames(hum_type) = hum_type$ensembl_gene_id
+hum.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene=="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene=="",]
+hum.spe.coding <- hum.spe[hum_type[hum.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+```
+
+### Human specific expression
+```{r}
+hum.spe.det <- intersect(hum.spe$external_gene_name.x, rownames(dge.hum.germ.raw))
+hum.spe.det.coding <- intersect(hum.spe.coding$external_gene_name.x, rownames(dge.hum.germ.raw))
+```
+
+#One to many
+```{r}
+hum.onetomany <- humMacMou.AllGene[humMacMou.AllGene$mmusculus_homolog_orthology_type=="ortholog_one2many" & humMacMou.AllGene$mmulatta_homolog_orthology_type=="ortholog_one2many",]
+
+hum.onetomany.coding <- hum.onetomany[hum_type[hum.onetomany$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+
+hum.onetomany.det.coding <- hum.onetomany.coding[hum.onetomany.coding$external_gene_name.x %in% rownames(dge.hum.germ.raw),]
+
+hum.onetomany.mac.det.coding <- intersect(hum.onetomany.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw)) 
+
+hum.onetomany.mou.det.coding <- intersect(hum.onetomany.coding$mmusculus_homolog_associated_gene_name, rownames(dge.mou.germ.raw))
+
+hum.onetomany.mac.det <- intersect(hum.onetomany$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw)) 
+
+hum.onetomany.mou.det <- intersect(hum.onetomany$mmusculus_homolog_associated_gene_name, rownames(dge.mou.germ.raw))
+
+hum.onetomany.hum.det <- intersect(hum.onetomany$external_gene_name.x, rownames(dge.hum.germ.raw))
+
+```
+
+```{r}
+write.table(unique(hum.spe$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.spe.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+```{r}
+write.table(unique(hum.onetomany$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.hum.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mac.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany$mmusculus_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mou.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(hum.onetomany.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.hum.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany.coding$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mac.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany.coding$mmusculus_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mou.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(hum.onetomany.hum.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.hum.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany.mac.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mac.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany.mou.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mou.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(hum.onetomany.det.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.hum.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany.mac.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mac.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.onetomany.mou.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.1m.mou.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+###. Mouse
+```{r}
+ensembl = useDataset("mmusculus_gene_ensembl",mart=ensembl)
+
+attributes = c("ensembl_gene_id","external_gene_name","hsapiens_homolog_ensembl_gene","hsapiens_homolog_associated_gene_name","hsapiens_homolog_perc_id","hsapiens_homolog_perc_id_r1","hsapiens_homolog_goc_score","hsapiens_homolog_wga_coverage","hsapiens_homolog_dn","hsapiens_homolog_ds","hsapiens_homolog_orthology_confidence","hsapiens_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+mouHum <- getBM(attributes = attributes,mart = ensembl)
+dim(mouHum)
+
+mou_type <- getBM(attributes = c("ensembl_gene_id","external_gene_name","gene_biotype"),mart = ensembl)
+
+###. Mouse-Macaque
+attributes = c("ensembl_gene_id","external_gene_name","mmulatta_homolog_ensembl_gene","mmulatta_homolog_associated_gene_name", "mmulatta_homolog_perc_id","mmulatta_homolog_perc_id_r1","mmulatta_homolog_goc_score","mmulatta_homolog_wga_coverage","mmulatta_homolog_dn","mmulatta_homolog_ds","mmulatta_homolog_orthology_confidence","mmulatta_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+mouMac <- getBM(attributes = attributes,mart = ensembl)
+dim(mouMac)
+
+```
+
+```{r}
+mouHumMac.AllGene <- merge(mouHum, mouMac, by = "ensembl_gene_id")
+rownames(mou_type) = mou_type$ensembl_gene_id
+mou.spe <- mouHumMac.AllGene[mouHumMac.AllGene$mmulatta_homolog_ensembl_gene=="" & mouHumMac.AllGene$hsapiens_homolog_ensembl_gene=="",]
+mou.spe.coding <- mou.spe[mou_type[mou.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+```
+
+### Mouse specific expression
+```{r}
+mou.spe.det <- intersect(mou.spe$external_gene_name.x, rownames(dge.mou.germ.raw))
+mou.spe.det.coding <- intersect(mou.spe.coding$external_gene_name.x, rownames(dge.mou.germ.raw))
+```
+
+```{r}
+write.table(unique(mou.spe$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mou.spe.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mou.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mou.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+#One to many
+```{r}
+mou.onetomany <- mouHumMac.AllGene[mouHumMac.AllGene$hsapiens_homolog_orthology_type == "ortholog_one2many" & mouHumMac.AllGene$mmulatta_homolog_orthology_type=="ortholog_one2many",]
+mou.onetomany.coding <- mou.onetomany[mou_type[mou.onetomany$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+mou.onetomany.coding <- mou.onetomany.coding[mou.onetomany.coding$external_gene_name.x %in% rownames(dge.mou.germ.norm),]
+mou.onetomany.mac.coding <- mou.onetomany.coding[mou.onetomany.coding$mmulatta_homolog_associated_gene_name %in% rownames(dge.mac.germ.norm),]$mmulatta_homolog_associated_gene_name
+mou.onetomany.hum.coding <- mou.onetomany.coding[mou.onetomany.coding$hsapiens_homolog_associated_gene_name %in% rownames(dge.hum.germ.norm),]$hsapiens_homolog_associated_gene_name
+```
+
+###. Monkey
+```{r}
+ensembl = useDataset("mmulatta_gene_ensembl",mart=ensembl)
+#listFilters(ensembl) #265 with_mmulatta_homolog
+#searchAttributes(mart = ensembl, pattern = "mmulatta")
+
+attributes = c("ensembl_gene_id","external_gene_name","hsapiens_homolog_ensembl_gene","hsapiens_homolog_associated_gene_name","hsapiens_homolog_perc_id","hsapiens_homolog_perc_id_r1","hsapiens_homolog_goc_score","hsapiens_homolog_wga_coverage","hsapiens_homolog_dn","hsapiens_homolog_ds","hsapiens_homolog_orthology_confidence","hsapiens_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+macHum <- getBM(attributes = attributes,mart = ensembl)
+dim(macHum)
+
+mac_type <- getBM(attributes = c("ensembl_gene_id","external_gene_name","gene_biotype"),mart = ensembl)
+
+###. Mouse-Macaque
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name", "mmusculus_homolog_perc_id","mmusculus_homolog_perc_id_r1","mmusculus_homolog_goc_score","mmusculus_homolog_wga_coverage","mmusculus_homolog_dn","mmusculus_homolog_ds","mmusculus_homolog_orthology_confidence","mmusculus_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+macMou <- getBM(attributes = attributes,mart = ensembl)
+dim(macMou)
+
+```
+
+```{r}
+macHumMou.AllGene <- merge(macHum, macMou, by = "ensembl_gene_id")
+rownames(mac_type) = mac_type$ensembl_gene_id
+mac.spe <- macHumMou.AllGene[macHumMou.AllGene$mmusculus_homolog_ensembl_gene=="" & macHumMou.AllGene$hsapiens_homolog_ensembl_gene=="",]
+mac.spe.coding <- mac.spe[mac_type[mac.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+```
+
+### Monkey specific expression
+```{r}
+mac.spe.det <- intersect(mac.spe$external_gene_name.x, rownames(dge.mac.germ.raw))
+mac.spe.det.coding <- intersect(mac.spe.coding$external_gene_name.x, rownames(dge.mac.germ.raw))
+```
+
+```{r}
+write.table(unique(mac.spe$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mac.spe.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mac.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mac.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+#####. primate-specific 
+```{r}
+hummac.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene!="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene=="",]
+hummac.spe.coding <- hummac.spe[hum_type[hummac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+```
+
+### primates specific expression
+```{r}
+hum.hummac.spe.det <- intersect(hummac.spe$external_gene_name.x, rownames(dge.hum.germ.raw))
+mac.hummac.spe.det <- intersect(hummac.spe$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw))
+
+hum.hummac.spe.det.coding <- intersect(hummac.spe.coding$external_gene_name.x,rownames(dge.hum.germ.raw))
+mac.hummac.spe.det.coding <-intersect(hummac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw))
+```
+
+```{r}
+write.table(unique(hummac.spe$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummac.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hummac.spe.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummac.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.hummac.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummac.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.hummac.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummac.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(hummac.spe$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.hummac.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hummac.spe.coding$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.hummac.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mac.hummac.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.hummac.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mac.hummac.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.hummac.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+#####. moumac-specific
+```{r}
+moumac.spe <- mouHumMac.AllGene[mouHumMac.AllGene$hsapiens_homolog_ensembl_gene=="" & mouHumMac.AllGene$mmulatta_homolog_ensembl_gene!="",]
+moumac.spe.coding <- moumac.spe[mou_type[moumac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+```
+
+### moumac specific expression
+```{r}
+mou.moumac.spe.det <- intersect(moumac.spe$external_gene_name.x, rownames(dge.mou.germ.raw))
+mac.moumac.spe.det <- intersect(moumac.spe$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw))
+
+mou.moumac.spe.det.coding <- intersect(moumac.spe.coding$external_gene_name.x,rownames(dge.mou.germ.raw))
+mac.moumac.spe.det.coding <-intersect(moumac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw))
+```
+
+```{r}
+write.table(unique(moumac.spe$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.moumac.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(moumac.spe.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.moumac.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mou.moumac.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.moumac.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mou.moumac.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.moumac.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(moumac.spe$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.moumac.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(moumac.spe.coding$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.moumac.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mac.moumac.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.moumac.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mac.moumac.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mac.moumac.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+#####. hummou-specific
+```{r}
+hummou.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene=="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene!="", ]
+hummou.spe.coding <- hummou.spe[hum_type[hummou.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+```
+
+```{r}
+mou.hummou.spe.det <- intersect(hummou.spe$mmusculus_homolog_associated_gene_name,rownames(dge.mou.germ.raw))
+hum.hummou.spe.det <- intersect(hummou.spe$external_gene_name.x,rownames(dge.hum.germ.raw))
+
+mou.hummou.spe.det.coding <- intersect(hummou.spe.coding$mmusculus_homolog_associated_gene_name,rownames(dge.mou.germ.raw))
+hum.hummou.spe.det.coding <-intersect(hummou.spe.coding$external_gene_name.x, rownames(dge.hum.germ.raw))
+```
+
+```{r}
+write.table(unique(hummou.spe$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummou.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hummou.spe.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummou.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.hummou.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummou.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hum.hummou.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hum.hummou.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(hummou.spe$mmusculus_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.hummou.spe.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(hummou.spe.coding$mmusculus_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.hummou.spe.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mou.hummou.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.hummou.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+write.table(unique(mou.hummou.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.hummou.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+### 1-1-1
+###. Human-Macaque
+```{r}
+library(biomaRt) #Ensemble Gene 94
+listEnsemblArchives()
+#listMarts()
+ensembl <- useMart(host='http://oct2018.archive.ensembl.org', 
+                     biomart='ENSEMBL_MART_ENSEMBL')
+#ensembl = useEnsembl(biomart="ensembl",version=94)
+#listDatasets(ensembl)
+ensembl = useDataset("hsapiens_gene_ensembl",mart=ensembl)
+#listFilters(ensembl) #265 with_mmulatta_homolog
+#searchAttributes(mart = ensembl, pattern = "mmulatta")
+
+attributes = c("ensembl_gene_id","external_gene_name","mmulatta_homolog_ensembl_gene","mmulatta_homolog_associated_gene_name","mmulatta_homolog_perc_id","mmulatta_homolog_perc_id_r1","mmulatta_homolog_goc_score","mmulatta_homolog_wga_coverage","mmulatta_homolog_dn","mmulatta_homolog_ds","mmulatta_homolog_orthology_confidence","mmulatta_homolog_orthology_type")
+
+#Get all Human-Macaque gene pairs
+humMac <- getBM(attributes = attributes,mart = ensembl)
+dim(humMac)
+
+
+#Remove non-homologs
+humMacOrth <- humMac[humMac$mmulatta_homolog_ensembl_gene!='',]
+dim(humMacOrth)  ##23781
+
+#Confidence
+sum(humMacOrth$mmulatta_homolog_orthology_confidence == 1)
+#20895  High confidence
+sum(humMacOrth$mmulatta_homolog_orthology_confidence == 0)
+#2976  Low confidence
+```
+
+###. Human-Mouse
+```{r}
+#searchAttributes(mart = ensembl, pattern = "mmusculus")
+attributes = c("ensembl_gene_id","external_gene_name","mmusculus_homolog_ensembl_gene","mmusculus_homolog_associated_gene_name", "mmusculus_homolog_perc_id","mmusculus_homolog_perc_id_r1","mmusculus_homolog_goc_score","mmusculus_homolog_wga_coverage","mmusculus_homolog_dn","mmusculus_homolog_ds","mmusculus_homolog_orthology_confidence","mmusculus_homolog_orthology_type")
+
+humMou <- getBM(attributes = attributes,mart = ensembl)
+dim(humMou)
+
+#Remove non-homologs
+humMouOrth <- humMou[humMou$mmusculus_homolog_ensembl_gene!='',]
+dim(humMouOrth)  ##26312
+
+#Confidence
+sum(humMouOrth$mmusculus_homolog_orthology_confidence == 1)
+#17472  High confidence
+sum(humMouOrth$mmusculus_homolog_orthology_confidence == 0)
+#8840  Low confidence
+```
+
+
+###. Human-Macaque-Mouse
+
+```{r}
+humMacMouOrth <- merge(humMacOrth,humMouOrth,by = "ensembl_gene_id")
+```
+
+###. replace genes that have no symbol in macaque with human gene symbols
+
+```{r}
+emprows = which(humMacMouOrth$mmulatta_homolog_associated_gene_name == '')
+humMacMouOrth$mmulatta_homolog_associated_gene_name[emprows] = humMacMouOrth$external_gene_name.x[emprows]
+```
+
+####. One-to-one-to-one genes
+```{r}
+humMacMouOrth.1to1 <- humMacMouOrth[humMacMouOrth$mmulatta_homolog_orthology_type=="ortholog_one2one",]
+humMacMouOrth.1to1 <- humMacMouOrth.1to1[humMacMouOrth.1to1$mmusculus_homolog_orthology_type=="ortholog_one2one",]
+```
+
+```{r}
+humMacMouOrth.1to1.hum.coding <- humMacMouOrth.1to1[hum_type[humMacMouOrth.1to1$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+
+humMacMouOrth.1to1.mac.coding <- humMacMouOrth.1to1[mac_type[humMacMouOrth.1to1$mmulatta_homolog_ensembl_gene,]$gene_biotype=="protein_coding",]
+
+humMacMouOrth.1to1.mou.coding <- humMacMouOrth.1to1[mou_type[humMacMouOrth.1to1$mmusculus_homolog_ensembl_gene,]$gene_biotype=="protein_coding",]
+```
+
+```{r}
+humMacMouOrth.1to1.hum.det <- intersect(humMacMouOrth.1to1$external_gene_name.x, rownames(dge.hum.germ.raw))
+
+humMacMouOrth.1to1.mac.det <- intersect(humMacMouOrth.1to1$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw))
+
+humMacMouOrth.1to1.mou.det <- intersect(humMacMouOrth.1to1$mmusculus_homolog_associated_gene_name, rownames(dge.mou.germ.raw))
+
+humMacMouOrth.1to1.hum.det.coding <- intersect(humMacMouOrth.1to1.hum.coding$external_gene_name.x, rownames(dge.hum.germ.raw))
+
+humMacMouOrth.1to1.mac.det.coding <- intersect(humMacMouOrth.1to1.mac.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw))
+
+humMacMouOrth.1to1.mou.det.coding <- intersect(humMacMouOrth.1to1.mou.coding$mmusculus_homolog_associated_gene_name, rownames(dge.mou.germ.raw))
+```
+
+```{r}
+write.table(unique(humMacMouOrth.1to1$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.hum.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mac.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1$mmusculus_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mou.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.hum.coding$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.hum.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.mac.coding$mmulatta_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mac.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.mou.coding$mmusculus_homolog_associated_gene_name),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mou.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.hum.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.hum.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.mac.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mac.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.mou.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mou.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.hum.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.hum.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.mac.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mac.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(unique(humMacMouOrth.1to1.mou.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.mou.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+

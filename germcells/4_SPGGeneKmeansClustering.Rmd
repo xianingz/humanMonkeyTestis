@@ -435,9 +435,343 @@ for(i in stages){
 write.table(mou.hvgs.kmean.write, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/mou.spg.kmean.allgene.list.txt", quote = FALSE, row.names = FALSE,sep = "\t")
 ```
 
+##.Connecting plot
 ```{r}
+hum.spg.kmeans.genes <- c()
+stages <- c(3,1,4,2)
+for(i in c(1:4)){
+  hum.spg.kmeans.genes <- rbind(hum.spg.kmeans.genes, data.frame(genes = names(which(hum.spg.kmean$cluster==stages[i])), stages=rep(i, sum(hum.spg.kmean$cluster==stages[i]))))
+}
 
+mac.spg.kmeans.genes <- c()
+stages <- c(2,4,3,1)
+for(i in c(1:4)){
+  mac.spg.kmeans.genes <- rbind(mac.spg.kmeans.genes, data.frame(genes = names(which(mac.spg.kmean$cluster==stages[i])), stages=rep(i, sum(mac.spg.kmean$cluster==stages[i]))))
+}
+
+mou.spg.kmeans.genes <- c()
+stages <- c(3,1,4,2)
+for(i in c(1:4)){
+  mou.spg.kmeans.genes <- rbind(mou.spg.kmeans.genes, data.frame(genes = names(which(mou.spg.kmean$cluster==stages[i])), stages=rep(i, sum(mou.spg.kmean$cluster==stages[i]))))
+}
+```
+
+##human Mac
+#Connector lines
+```{r}
+kmeans.hum.mac.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.spg.hvg,]
+kmeans.hum.mac.genes <- kmeans.hum.mac.genes[kmeans.hum.mac.genes$mmulatta_homolog_associated_gene_name %in% mac.spg.hvg,]
+```
+
+```{r}
+pos.hum.mac <- c()
+for(i in c(1:dim(kmeans.hum.mac.genes)[1])){
+  hum.gen <- kmeans.hum.mac.genes$external_gene_name.x[i]
+  mac.gen <- kmeans.hum.mac.genes$mmulatta_homolog_associated_gene_name[i]
+  x = which(hum.spg.kmeans.genes$genes == hum.gen)
+  y = which(mac.spg.kmeans.genes$genes == mac.gen)
+  pos.hum.mac <- rbind(pos.hum.mac,c(x,y,hum.gen, mac.gen))
+}
+pos.hum.mac <- data.matrix(pos.hum.mac)
+colnames(pos.hum.mac) = c("hum.pos","mac.pos", "hum.gen","mac.gen")
+```
+
+Sort within each cluster
+```{r}
+rownames(pos.hum.mac) <- pos.hum.mac[,"hum.gen"]
+hum.kmeans.genes.ord <- hum.spg.kmeans.genes
+for(i in c(1:6)){
+  genes <- hum.spg.kmeans.genes$genes[hum.spg.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mac[,"hum.gen"]])
+  genes <- pos.hum.mac[,"hum.gen"][pos.hum.mac[,"hum.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mac[genes,"mac.pos"]))]
+  hum.kmeans.genes.ord$genes[hum.spg.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+```{r}
+rownames(pos.hum.mac) <- pos.hum.mac[,"mac.gen"]
+mac.kmeans.genes.ord <- mac.spg.kmeans.genes
+for(i in c(1:6)){
+  genes <- mac.spg.kmeans.genes$genes[mac.spg.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mac[,"mac.gen"]])
+  genes <- pos.hum.mac[,"mac.gen"][pos.hum.mac[,"mac.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mac[genes,"hum.pos"]))]
+  mac.kmeans.genes.ord$genes[mac.spg.kmeans.genes$stages==i] = c(genes,ogenes)
+}
 ```
 
 
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(kmeans.hum.mac.genes)[1])){
+#for(i in c(1:10)){ 
+  x = which(hum.kmeans.genes.ord$genes == kmeans.hum.mac.genes$external_gene_name.x[i])
+  y = which(mac.kmeans.genes.ord$genes == kmeans.hum.mac.genes$mmulatta_homolog_associated_gene_name[i])
+  #print(kmeans.hum.mac.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mac.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1000-x*1000/dim(hum.spg.kmeans.genes)[1]
+  y = 1000-y*1000/dim(mac.spg.kmeans.genes)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.1)
+}
+points(data.frame(x=rep(1,dim(hum.spg.kmeans.genes)[1]),y=1000-c(1:dim(hum.spg.kmeans.genes)[1])*1000/dim(hum.spg.kmeans.genes)[1]),col=cols[hum.spg.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(mac.spg.kmeans.genes)[1]),y=1000-c(1:dim(mac.spg.kmeans.genes)[1])*1000/dim(mac.spg.kmeans.genes)[1]),col=cols[mac.spg.kmeans.genes$stages], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mac.spg.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mac.spg.cen.std[as.character(mac.spg.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = hum.spg.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(hum.spg.cen.std[as.character(hum.spg.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+##human Mou
+#Connector lines
+```{r}
+kmeans.hum.mou.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.spg.hvg,]
+kmeans.hum.mou.genes <- kmeans.hum.mou.genes[kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name %in% mou.spg.hvg,]
+```
+
+```{r}
+pos.hum.mou <- c()
+for(i in c(1:dim(kmeans.hum.mou.genes)[1])){
+  hum.gen <- kmeans.hum.mou.genes$external_gene_name.x[i]
+  mou.gen <- kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i]
+  x = which(hum.spg.kmeans.genes$genes == hum.gen)
+  y = which(mou.spg.kmeans.genes$genes == mou.gen)
+  pos.hum.mou <- rbind(pos.hum.mou,c(x,y,hum.gen, mou.gen))
+}
+pos.hum.mou <- data.matrix(pos.hum.mou)
+colnames(pos.hum.mou) = c("hum.pos","mou.pos", "hum.gen","mou.gen")
+```
+
+Sort within each cluster
+```{r}
+
+rownames(pos.hum.mou) <- pos.hum.mou[,"hum.gen"]
+hum.kmeans.genes.ord <- hum.spg.kmeans.genes
+for(i in c(1:6)){
+  genes <- hum.spg.kmeans.genes$genes[hum.spg.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mou[,"hum.gen"]])
+  genes <- pos.hum.mou[,"hum.gen"][pos.hum.mou[,"hum.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mou[genes,"mou.pos"]))]
+  hum.kmeans.genes.ord$genes[hum.spg.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+```{r}
+rownames(pos.hum.mou) <- pos.hum.mou[,"mou.gen"]
+mou.kmeans.genes.ord <- mou.spg.kmeans.genes
+for(i in c(1:6)){
+  genes <- mou.spg.kmeans.genes$genes[mou.spg.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mou[,"mou.gen"]])
+  genes <- pos.hum.mou[,"mou.gen"][pos.hum.mou[,"mou.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mou[genes,"hum.pos"]))]
+  mou.kmeans.genes.ord$genes[mou.spg.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(kmeans.hum.mou.genes)[1])){
+#for(i in c(1:10)){ 
+  x = which(hum.kmeans.genes.ord$genes == kmeans.hum.mou.genes$external_gene_name.x[i])
+  y = which(mou.kmeans.genes.ord$genes == kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  #print(kmeans.hum.mou.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1000-x*1000/dim(hum.spg.kmeans.genes)[1]
+  y = 1000-y*1000/dim(mou.spg.kmeans.genes)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.1)
+}
+points(data.frame(x=rep(1,dim(hum.spg.kmeans.genes)[1]),y=1000-c(1:dim(hum.spg.kmeans.genes)[1])*1000/dim(hum.spg.kmeans.genes)[1]),col=cols[hum.spg.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(mou.spg.kmeans.genes)[1]),y=1000-c(1:dim(mou.spg.kmeans.genes)[1])*1000/dim(mou.spg.kmeans.genes)[1]),col=cols[mou.spg.kmeans.genes$stages], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = hum.spg.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(hum.spg.cen.std[as.character(hum.spg.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mou.spg.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mou.spg.cen.std[as.character(mou.spg.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+##Monkey Mou
+#Connector lines
+```{r}
+kmeans.mac.mou.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name %in% mac.spg.hvg,]
+kmeans.mac.mou.genes <- kmeans.mac.mou.genes[kmeans.mac.mou.genes$mmusculus_homolog_associated_gene_name %in% mou.spg.hvg,]
+```
+
+```{r}
+pos.mac.mou <- c()
+for(i in c(1:dim(kmeans.mac.mou.genes)[1])){
+  mac.gen <- kmeans.mac.mou.genes$mmulatta_homolog_associated_gene_name[i]
+  mou.gen <- kmeans.mac.mou.genes$mmusculus_homolog_associated_gene_name[i]
+  x = which(mac.spg.kmeans.genes$genes == mac.gen)
+  y = which(mou.spg.kmeans.genes$genes == mou.gen)
+  pos.mac.mou <- rbind(pos.mac.mou,c(x,y,mac.gen, mou.gen))
+}
+pos.mac.mou <- data.matrix(pos.mac.mou)
+colnames(pos.mac.mou) = c("mac.pos","mou.pos", "mac.gen","mou.gen")
+```
+
+Sort within each cluster
+```{r}
+
+rownames(pos.mac.mou) <- pos.mac.mou[,"mac.gen"]
+mac.kmeans.genes.ord <- mac.spg.kmeans.genes
+for(i in c(1:6)){
+  genes <- mac.spg.kmeans.genes$genes[mac.spg.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.mac.mou[,"mac.gen"]])
+  genes <- pos.mac.mou[,"mac.gen"][pos.mac.mou[,"mac.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.mac.mou[genes,"mou.pos"]))]
+  mac.kmeans.genes.ord$genes[mac.spg.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+```{r}
+rownames(pos.mac.mou) <- pos.mac.mou[,"mou.gen"]
+mou.kmeans.genes.ord <- mou.spg.kmeans.genes
+for(i in c(1:6)){
+  genes <- mou.spg.kmeans.genes$genes[mou.spg.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.mac.mou[,"mou.gen"]])
+  genes <- pos.mac.mou[,"mou.gen"][pos.mac.mou[,"mou.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.mac.mou[genes,"mac.pos"]))]
+  mou.kmeans.genes.ord$genes[mou.spg.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+```
+
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(kmeans.mac.mou.genes)[1])){
+#for(i in c(1:10)){ 
+  x = which(mac.kmeans.genes.ord$genes == kmeans.mac.mou.genes$mmulatta_homolog_associated_gene_name[i])
+  y = which(mou.kmeans.genes.ord$genes == kmeans.mac.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  #print(kmeans.hum.mou.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mou.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1000-x*1000/dim(mac.spg.kmeans.genes)[1]
+  y = 1000-y*1000/dim(mou.spg.kmeans.genes)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.1)
+}
+points(data.frame(x=rep(1,dim(mac.spg.kmeans.genes)[1]),y=1000-c(1:dim(mac.spg.kmeans.genes)[1])*1000/dim(mac.spg.kmeans.genes)[1]),col=cols[mac.spg.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(mou.spg.kmeans.genes)[1]),y=1000-c(1:dim(mou.spg.kmeans.genes)[1])*1000/dim(mou.spg.kmeans.genes)[1]),col=cols[mou.spg.kmeans.genes$stages], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mou.spg.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mou.spg.cen.std[as.character(mou.spg.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mac.spg.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mac.spg.cen.std[as.character(mac.spg.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+Write the genes.
+```{r}
+orth.connect <- data.frame(humgen=humMacMouOrth.1to1.in$external_gene_name.x, macgen = humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name, mougen = humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name, humclu=rep(0, dim(humMacMouOrth.1to1.in)[1]),macclu=rep(0, dim(humMacMouOrth.1to1.in)[1]),mouclu=rep(0, dim(humMacMouOrth.1to1.in)[1]))
+```
+
+```{r}
+rownames(orth.connect) = humMacMouOrth.1to1.in$external_gene_name.x
+hum.ord = c(3,1,4,2)
+for(i in c(1:4)){
+  orth.connect[intersect(humMacMouOrth.1to1.in$external_gene_name.x,names(which(hum.spg.kmean$cluster==hum.ord[i]))),"humclu"] = i
+}
+
+rownames(orth.connect) = humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name
+mac.ord = c(2,4,3,1)
+for(i in c(1:4)){
+  orth.connect[intersect(humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,names(which(mac.spg.kmean$cluster==mac.ord[i]))),"macclu"] = i
+}
+
+rownames(orth.connect) = humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name
+mou.ord = c(3,1,4,2)
+for(i in c(1:4)){
+  orth.connect[intersect(humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,names(which(mou.spg.kmean$cluster==mou.ord[i]))),"mouclu"] = i
+}
+```
+
+```{r}
+write.table(orth.connect, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/OrthologConnection.txt",quote=FALSE,row.names=FALSE,col.names = TRUE,sep="\t")
+```
 
