@@ -1,5 +1,6 @@
 # CCA alignment and clustering for SPGs from three species
 
+##read in 1-1-1 orthologues data and spg raw data.
 ```{r}
 humMacMouOrth.1to1.in <- readRDS("../interdata/humMacMouOrth.1to1.in.Rds")
 dge.hum.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.raw.rds")
@@ -10,7 +11,8 @@ library(seriation)
 library(xlsx)
 ```
 
-mouse seurat object
+##Seurat CCA
+###create mouse seurat object
 ```{r}
 dge.mou.spg.raw.sorted.named <- dge.mou.spg.raw[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,]
 rownames(dge.mou.spg.raw.sorted.named) = humMacMouOrth.1to1.in$external_gene_name.x
@@ -21,7 +23,7 @@ dge.mou.spg <- ScaleData(object = dge.mou.spg,vars.to.regress = c("nUMI"))
 dge.mou.spg <- FindVariableGenes(object = dge.mou.spg,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 0)
 ```
 
-##rename macaque
+###create monkey seurat object
 ```{r}
 dge.mac.spg.raw.renamed <- dge.mac.spg.raw
 rownames(dge.mac.spg.raw.renamed) <- rownames(dge.hum.spg.raw)
@@ -31,6 +33,7 @@ dge.mac.spg.renamed <- FindVariableGenes(object = dge.mac.spg.renamed,mean.funct
 dge.mac.spg.renamed <- ScaleData(object = dge.mac.spg.renamed,vars.to.regress = c("nUMI"))
 ```
 
+###create human seurat object
 ```{r}
 dge.hum.spg <- CreateSeuratObject(raw.data = dge.hum.spg.raw)
 dge.hum.spg <- NormalizeData(object = dge.hum.spg, normalization.method = "LogNormalize", 
@@ -39,7 +42,7 @@ dge.hum.spg <- FindVariableGenes(object = dge.hum.spg,mean.function = ExpMean, d
 dge.hum.spg <- ScaleData(object = dge.hum.spg,vars.to.regress = c("nUMI"))
 ```
 
-Highly variable genes
+##Select Highly variable genes from three species and choose the union.
 ```{r}
 hvg.spg.1 <- rownames(x = head(x = dge.hum.spg@hvg.info, n = 2000))
 hvg.spg.2 <- rownames(x = head(x = dge.mac.spg.renamed@hvg.info, n = 2000))
@@ -54,16 +57,16 @@ dge.mac.spg.renamed@meta.data[,"species"] <- "Monkey"
 dge.mou.spg@meta.data[,"species"] <- "Mouse"
 ```
 
+###Run seurat CCA 
 ```{r}
 spg.cca <- RunMultiCCA(object.list = list(dge.hum.spg, dge.mac.spg.renamed, dge.mou.spg),genes.use = hvg.union, num.ccs = 15, niter = 20)
 ```
-
 
 ```{r}
 MetageneBicorPlot(spg.cca, grouping.var = "species", dims.eval = 1:15, display.progress = TRUE)
 ```
 
-
+##Align CCs and run dimensional reduction methods
 ```{r}
 #spg.cca <- CalcVarExpRatio(object = spg.cca, reduction.type = "pca", grouping.var = "species", dims.use = 1:8)
 spg.cca <- AlignSubspace(object = spg.cca, reduction.type = "cca", grouping.var = "species", dims.align = 1:8)
@@ -73,12 +76,18 @@ spg.cca <- RunTSNE(object = spg.cca, reduction.use = "cca.aligned", dims.use = 1
 spg.cca <- RunUMAP(object = spg.cca, reduction.use = "cca.aligned", dims.use = 1:8)
 ```
 
+### plot post-aligned cells using t-SNE, UMAP and CCA.
 ```{r fig.width=5, fig.height=4}
-TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "species")
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cca.species.tsne.pdf",width = 5,height = 4)
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "species",cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dev.off()
 DimPlot(object = spg.cca, reduction.use = "cca.aligned", pt.size = 1, group.by = "species")
-DimPlot(object = spg.cca, reduction.use = "umap", pt.size = 1, group.by = "species")
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cca.species.umap.pdf",width = 5,height = 4)
+DimPlot(object = spg.cca, reduction.use = "umap", pt.size = 1, group.by = "species",cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dev.off()
 ```
 
+##Do clustering
 ```{r}
 spg.cca <- FindClusters(object = spg.cca, reduction.type = "cca.aligned", dims.use = 1:8, save.SNN = TRUE, resolution = 0.6)
 ```
@@ -106,15 +115,26 @@ for(i in clus){
 colnames(spg.cen.0.6) <- clus
 ```
 
+```{r}
+library(seriation)
+```
 
+## cluster rank correlation (clusters 1-6)
 ```{r fig.width=6,fig.height=5}
 #library(ComplexHeatmap)
-spg.cor.0.6 <- cor(spg.cen.0.6, method="spearman")
+spg.cor.0.6 <- cor(spg.cen.0.6[,c("1","2","3","4","5","6")], method="spearman")
 a = seriate(spg.cor.0.6,method="BEA_TSP")
 ord = get_order(a)
 Heatmap(spg.cor.0.6[ord,ord], cluster_rows = FALSE, cluster_columns = FALSE)
 ```
 
+```{r}
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cor.heatmap.pdf",width = 5,height = 4)
+Heatmap(spg.cor.0.6[ord,ord], cluster_rows = FALSE, cluster_columns = FALSE)
+dev.off()
+```
+
+###plot the clusters in TSNE and UMAP
 ```{r fig.width=5, fig.height=4}
 cols <- c("#477900",
 "#9378ff",
@@ -125,8 +145,12 @@ cols <- c("#477900",
 "#ff9c1d",
 "#0190c8",
 "#ffa19e")
-TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord", colors.use = cols)
-DimPlot(object = spg.cca, reduction.use = "umap", pt.size = 1, group.by = "res.0.6.ord", cols.use = cols)
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cca.tsne.pdf",width = 5,height = 4)
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord", colors.use = cols, cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dev.off()
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cca.umap.pdf",width = 5,height = 4)
+DimPlot(object = spg.cca, reduction.use = "umap", pt.size = 1, group.by = "res.0.6.ord", cols.use = cols, cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dev.off()
 DimPlot(object = spg.cca, reduction.use = "cca.aligned", pt.size = 1, group.by = "res.0.6.ord", cols.use = cols)
 ```
 Save spg.cca object
@@ -136,6 +160,7 @@ saveRDS(spg.cca, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cc
 
 
 
+##Compare with the mouse SPG clusters in previous paper.
 ##Read in mouse germ cell 12 clusters
 ```{r}
 germ12clu <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/mouse/MouseAdultST24_12GermClusters_ClusterID.txt")
@@ -152,6 +177,7 @@ spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12cl
 spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12clu$x == 3]] = 3
 ```
 
+###plot the previous clusters on the new tsne.
 ```{r fig.width=6, fig.height=5}
 DimPlot(object = spg.cca, reduction.use = "tsne", pt.size = 1, group.by = "mouseclus", cols.use = c("grey","#49adad","#cb5b42","#67a64e","#8d70c9","#b69340","#c8588c"))
 ```
@@ -162,6 +188,7 @@ spg.cca <- SetIdent(spg.cca, ident.use = spg.cca@meta.data$res.0.6.ord)
 
 
 ##. Find Markers
+###. Conserved markers
 ```{r}
 markers.9clus <- list()
 for(i in c(1:8)){
@@ -180,6 +207,7 @@ if(i==1){
 }
 ```
 
+###findmarkers
 ```{r}
 markers.sep.9clus <- list()
 for(i in c(1:8)){
@@ -592,4 +620,12 @@ do.call("grid.arrange", c(plts, ncol=4))
 dev.off()
 ```
 
+1. Read in datasets (3-12)
+2. Run Seurat CCA for SPG from three species (14-88)
+3. Do clustering and plot the clusters (90-158)
+4. Compare with the mouse SPG clusters in previous paper (163-187)
+5. Markers finding and markers plots (based on 1-1-1 orthologues) (190-241)
+6. Calculate SPG cluster centroid for each species (242-352)
+7. Call Markers using all genes for each species separately (400-479)
+8. Plot extra markers, polished figures on tSNE and violin plots (481-621)
 

@@ -253,6 +253,30 @@ write.table(unique(hummou.spe.coding$mmusculus_homolog_associated_gene_name),fil
 write.table(unique(mou.hummou.spe.det),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.hummou.spe.det.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
 write.table(unique(mou.hummou.spe.det.coding),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/mou.hummou.spe.det.coding.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
 ```
+
+## Determine 1-many or many-1 gene list
+```{r}
+humMacMou.AllGene$mmul_orthologue_type <- humMacMou.AllGene$mmulatta_homolog_orthology_type
+humMacMou.AllGene$mmus_orthologue_type <- humMacMou.AllGene$mmusculus_homolog_orthology_type
+for(i in unique(humMacMou.AllGene$external_gene_name.x)){
+  if(humMacMou.AllGene$mmulatta_homolog_orthology_type[humMacMou.AllGene$external_gene_name.x==i]=="ortholog_one2many"){
+    humbase = humMacMou.AllGene
+    
+  }
+}
+```
+
+
+```{r}
+humMacMou.AllGene.onetomany <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_orthology_type=="ortholog_one2many" & humMacMou.AllGene$mmusculus_homolog_orthology_type=="ortholog_one2many",]
+```
+
+```{r}
+a <- macHumMou.AllGene[macHumMou.AllGene$ensembl_gene_id %in% humMacMou.AllGene.onetomany$mmulatta_homolog_ensembl_gene,]
+```
+
+
+
 ### 1-1-1
 ###. Human-Macaque
 ```{r}

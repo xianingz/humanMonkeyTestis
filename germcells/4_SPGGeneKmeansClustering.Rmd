@@ -1,5 +1,6 @@
 #. Kmeans for SPG Clusters
 
+Read in SPG cluster centroid dataset.
 ```{r}
 hum.spg.cen <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.spg.cen.rds")
 mac.spg.cen <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.spg.cen.rds")
@@ -19,7 +20,7 @@ mac.spg.cen.6.std <- t(apply(mac.spg.cen.6.log, 1, function(x) (x-mean(x))/sd(x)
 mou.spg.cen.6.std <- t(apply(mou.spg.cen.6.log, 1, function(x) (x-mean(x))/sd(x)))
 ``` 
 
-HVG
+Select HVGs for each species.
 ```{r fig.width=5,fig.height=5}
 g.mean <- apply(hum.spg.cen.6.log,1,mean)
 g.var <- apply(hum.spg.cen.6.log,1,var)
