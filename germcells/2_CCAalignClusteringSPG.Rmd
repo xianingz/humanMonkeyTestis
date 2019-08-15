@@ -173,13 +173,15 @@ spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2=
 spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2==2]] = "1b"
 spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2==3]] = "1c"
 spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2==4]] = "1d"
-spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12clu$x == 2]] = 2
-spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12clu$x == 3]] = 3
+#spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12clu$x == 2]] = 2
+#spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% rownames(germ12clu)[germ12clu$x == 3]] = 3
 ```
 
 ###plot the previous clusters on the new tsne.
 ```{r fig.width=6, fig.height=5}
-DimPlot(object = spg.cca, reduction.use = "tsne", pt.size = 1, group.by = "mouseclus", cols.use = c("grey","#49adad","#cb5b42","#67a64e","#8d70c9","#b69340","#c8588c"))
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/SPG/MouseSPGCluHightlight.pdf",width = 6, height = 5)
+DimPlot(object = spg.cca, reduction.use = "tsne", pt.size = 1, group.by = "mouseclus", cols.use = c("grey","#49adad","#cb5b42","#67a64e","#8d70c9","#b69340","#c8588c"),cells.use = rownames(spg.cca@meta.data)[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dev.off()
 ```
 
 ```{r}
@@ -489,6 +491,7 @@ humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interda
 spg.cca <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
 ```
 
+
 ```{r}
 redblue100.alpha<-rgb(read.table("~/storage/HumanMacaqueMouseCompAnaysis/redblue100.txt",sep='\t',row.names=1,header=T),alpha=0.8)
 
@@ -533,7 +536,7 @@ st6<- data.plot
 st6<-st6[order(st6[,6]),]
 z<-st6[,6]
 
-jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/newplots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
 par(mar=c(0.5,0.5,2,0.5),mgp=c(1,0.5,0))
 z<-st6[,6]
 zcolor <- redblue100.alpha[40:100][(z - min(z))/diff(range(z))*60 + 1]
@@ -556,12 +559,76 @@ for(i in intersect(markers2, humMacMouOrth.1to1.in$external_gene_name.x)){
 ```
 "RARA"    "RARB"    "RARG"    "RXRA"    "RXRB"    "ALDH1A2" "ALDH1A3" added to the three species SPG
 
+```{r}
+marker3 <- c("TSPAN33", "PIWIL4", "MORC1", "TCF3", "CDK17", "MAGEB2", "DNAJB6", "FMR1", "ZBTB43", "ZNF428", "MSL3", "LY6K","VCX","VCY")
+for(i in intersect(marker3, humMacMouOrth.1to1.in$external_gene_name.x)){
+  plotgene(i)
+}
+```
+
+```{r}
+marker5 <- c("HORMAD1","DNMT1","MEIOB","SOHLH1","SOHLH2","KIT","KIF1A","TEX101","SYCP2","FMR1NB","DMRT1","DMRTB1")
+for(i in intersect(marker5, humMacMouOrth.1to1.in$external_gene_name.x)){
+  plotgene(i)
+}
+```
+
+```{r}
+marker6 <- c("GPC3","GPX1")
+```
+
+```{r}
+plotgene("GPC3")
+```
+
+```{r}
+plotgene("DMRT1")
+```
+```{r}
+markers <- c("TSPAN33","PIWIL4","MORC1","TCF3","CDK17","STRA8","MAGEB2","FMR1","DNAJB6","L1TD1")
+```
+
 
 ```{r fig.width=10,fig.height=20}
 pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/AlignedThreeSpecies_Violin.pdf",width = 10, height = 20)
 VlnPlot(object = spg.cca, features.plot = intersect(markers,humMacMouOrth.1to1.in$external_gene_name.x),nCol = 4,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6))
 dev.off()
 ```
+
+```{r}
+for(i in intersect(marker5, humMacMouOrth.1to1.in$external_gene_name.x)){
+  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/",i,".pdf"),width = 2.5, height = 2.5)
+  p<-VlnPlot(object = spg.cca, features.plot = i,nCol = 4,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6),cells.use=spg.cca@cell.names[spg.cca@meta.data$species=="Human"])
+  print(p)
+  dev.off()
+}
+```
+
+```{r}
+spg.cca.hum <- SubsetData(object = spg.cca, cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Human"])
+spg.cca.mac <- SubsetData(object = spg.cca, cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Monkey"])
+spg.cca.mou <- SubsetData(object = spg.cca, cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Mouse"])
+```
+
+```{r}
+for(i in intersect(markers, humMacMouOrth.1to1.in$external_gene_name.x)){
+  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/hum_",i,".pdf"),width = 2.5, height = 2.5)
+  p<-VlnPlot(object = spg.cca.hum, features.plot = i,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6),cols.use = cols)
+  print(p)
+  dev.off()
+  
+  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/mac_",i,".pdf"),width = 2.5, height = 2.5)
+  p<-VlnPlot(object = spg.cca.mac, features.plot = i,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6),cols.use = cols)
+  print(p)
+  dev.off()
+  
+  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/mou_",i,".pdf"),width = 2.5, height = 2.5)
+  p<-VlnPlot(object = spg.cca.mou, features.plot = i,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6),cols.use = cols)
+  print(p)
+  dev.off()
+}
+```
+
 
 ```{r}
 dge.hum.spg.norm <- apply(dge.hum.spg.raw,2,function(x) x/sum(x)*1e4)
@@ -620,6 +687,89 @@ do.call("grid.arrange", c(plts, ncol=4))
 dev.off()
 ```
 
+```{r}
+humMac[humMac$external_gene_name %in% marker4, c(1:4)]
+humMou[humMou$external_gene_name %in% marker4, c(1:4)]
+```
+
+```{r}
+marker5.hum <- c("HORMAD1","DNMT1","MEIOB","SOHLH1","SOHLH2","KIT","KIF1A","TEX101","SYCP2","FMR1NB","VCX", "VCX2", "VCX3A", "VCX3B")
+marker5.mac <- c("HORMAD1","DNMT1", "MEIOB", "KIF1A",  "TEX101","SYCP2",  "FMR1NB", "ENSMMUG00000001172")
+# "ENSMMUG00000001172" is ortholog for SOHLH2
+marker5.mou <- c("Sycp2","Tex101","Sohlh2","Sohlh1","Kif1a","Fmr1nb","Hormad1", "Meiob","Dnmt1","Kit")
+```
+
+```{r}
+i="GPC3"
+  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/",i,".pdf"),width = 2.5, height = 2.5)
+  p<-VlnPlot(object = spg.cca, features.plot = i,nCol = 4,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6))
+  print(p)
+  dev.off()
+```
+
+```{r}
+marker5.hum <- c("DMRT1","DMRTB1")
+marker5.mac <- c("DMRT1")
+marker5.mou <- c("Dmrt1","Dmrtb1")
+```
+
+```{r}
+marker5.hum <- marker6
+marker5.mac <- c("GPC3")
+marker5.mou <- c("Gpc3","Gpx1")
+marker6.mac <- c("ENSMMUG00000046487", "ENSMMUG00000041391")
+```
+
+
+```{r}
+dge.hum.spg.full.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.full.raw.rds")
+dge.mac.spg.full.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.full.raw.rds")
+dge.mou.spg.full.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.full.raw.rds")
+```
+
+```{r}
+dge.hum.spg.full.norm <- apply(dge.hum.spg.full.raw,2,function(x) x/sum(x)*1e4)
+dge.mac.spg.full.norm <- apply(dge.mac.spg.full.raw,2,function(x) x/sum(x)*1e4)
+dge.mou.spg.full.norm <- apply(dge.mou.spg.full.raw,2,function(x) x/sum(x)*1e4)
+```
+
+```{r}
+for(i in intersect(marker5.mou, rownames(dge.mou.spg.full.norm))){
+  dat = data.frame(expr = log(dge.mou.spg.full.norm[i,]+1), ident = spg.cca@ident[colnames(dge.mou.spg.full.norm)])
+  dat = dat[dat$ident %in% c(1:6), ]
+  p <- ggplot(dat, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle(i) + theme(legend.position = "none")
+  pdf(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Mou_",i,".pdf"),width = 2.5, height = 2.5)
+  print(p)
+  dev.off()
+}
+
+```
+
+```{r}
+for(i in intersect(marker5.hum, rownames(dge.hum.spg.full.norm))){
+  dat = data.frame(expr = log(dge.hum.spg.full.norm[i,]+1), ident = spg.cca@ident[colnames(dge.hum.spg.full.norm)])
+  dat = dat[dat$ident %in% c(1:6), ]
+  p <- ggplot(dat, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle(i) + theme(legend.position = "none")
+  pdf(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Hum_",i,".pdf"),width = 2.5, height = 2.5)
+  print(p)
+  dev.off()
+}
+
+```
+
+```{r}
+for(i in intersect(marker6.mac, rownames(dge.mac.spg.full.norm))){
+  dat = data.frame(expr = log(dge.mac.spg.full.norm[i,]+1), ident = spg.cca@ident[colnames(dge.mac.spg.full.norm)])
+  dat = dat[dat$ident %in% c(1:6), ]
+  p <- ggplot(dat, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle(i) + theme(legend.position = "none")
+  pdf(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Mac_",i,".pdf"),width = 3, height = 2.5)
+  print(p)
+  dev.off()
+}
+
+```
+
+
 1. Read in datasets (3-12)
 2. Run Seurat CCA for SPG from three species (14-88)
 3. Do clustering and plot the clusters (90-158)
@@ -629,3 +779,42 @@ dev.off()
 7. Call Markers using all genes for each species separately (400-479)
 8. Plot extra markers, polished figures on tSNE and violin plots (481-621)
 
+Plot #Genes and #UMIs for 6 clusters.
+```{r}
+#Human
+hum.genes <- apply(dge.hum.spg.full.raw,2, function(x) sum(x!=0))
+hum.umis <- apply(dge.hum.spg.full.raw,2,sum)
+df <- data.frame(NumGene = hum.genes, NumUMIs = hum.umis, Cluster=spg.cca@meta.data[colnames(dge.hum.spg.full.raw),]$res.0.6.ord)
+df <- df[df$Cluster %in% c(1:6),]
+p1 <- ggplot(df, aes(x=Cluster,y=NumGene, fill=Cluster))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle("#Genes (Human)") + theme(legend.position = "none")
+p2 <- ggplot(df, aes(x=Cluster,y=NumUMIs, fill=Cluster))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle("#UMIs (Human)") + theme(legend.position = "none")
+pdf(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.hum.NumGeneUMI.violin.pdf"),width = 6, height = 2.5)
+do.call("grid.arrange", c(list(p1,p2), ncol=2))
+dev.off()
+```
+
+```{r}
+#Monkey
+mac.genes <- apply(dge.mac.spg.full.raw,2, function(x) sum(x!=0))
+mac.umis <- apply(dge.mac.spg.full.raw,2,sum)
+df <- data.frame(NumGene = mac.genes, NumUMIs = mac.umis, Cluster=spg.cca@meta.data[colnames(dge.mac.spg.full.raw),]$res.0.6.ord)
+df <- df[df$Cluster %in% c(1:6),]
+p1 <- ggplot(df, aes(x=Cluster,y=NumGene, fill=Cluster))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle("#Genes (Monkey)") + theme(legend.position = "none")
+p2 <- ggplot(df, aes(x=Cluster,y=NumUMIs, fill=Cluster))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle("#UMIs (Monkey)") + theme(legend.position = "none")
+pdf(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.mac.NumGeneUMI.violin.pdf"),width = 6, height = 2.5)
+do.call("grid.arrange", c(list(p1,p2), ncol=2))
+dev.off()
+```
+
+```{r}
+#Mouse
+mou.genes <- apply(dge.mou.spg.full.raw,2, function(x) sum(x!=0))
+mou.umis <- apply(dge.mou.spg.full.raw,2,sum)
+df <- data.frame(NumGene = mou.genes, NumUMIs = mou.umis, Cluster=spg.cca@meta.data[colnames(dge.mou.spg.full.raw),]$res.0.6.ord)
+df <- df[df$Cluster %in% c(1:6),]
+p1 <- ggplot(df, aes(x=Cluster,y=NumGene, fill=Cluster))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle("#Genes (Mouse)") + theme(legend.position = "none")
+p2 <- ggplot(df, aes(x=Cluster,y=NumUMIs, fill=Cluster))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle("#UMIs (Mouse)") + theme(legend.position = "none")
+pdf(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.mou.NumGeneUMI.violin.pdf"),width = 6, height = 2.5)
+do.call("grid.arrange", c(list(p1,p2), ncol=2))
+dev.off()
+```

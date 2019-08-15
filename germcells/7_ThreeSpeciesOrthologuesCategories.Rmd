@@ -370,6 +370,21 @@ humMacMouOrth.1to1.mac.det.coding <- intersect(humMacMouOrth.1to1.mac.coding$mmu
 humMacMouOrth.1to1.mou.det.coding <- intersect(humMacMouOrth.1to1.mou.coding$mmusculus_homolog_associated_gene_name, rownames(dge.mou.germ.raw))
 ```
 
+### Other types of orthologs (genes that have orthologues in all three species but not in 1-1-1 relationship)
+```{r}
+#all detected human coding genes
+hum.all.det.coding <- intersect(hum_type$external_gene_name[hum_type$gene_biotype=="protein_coding"], rownames(dge.hum.germ.norm))
+#remove human specific genes
+hum.other.othos <- setdiff(hum.all.det.coding, hum.spe.coding)
+#remove hum-mac specific genes
+hum.other.othos <- setdiff(hum.other.othos, hum.hummac.spe.coding)
+#remove hum-mou specific genes
+hum.other.othos <- setdiff(hum.other.othos, hum.hummou.spe.coding)
+#remove 1-1-1 orthologs
+hum.other.othos <- setdiff(hum.other.othos, humMacMouOrth.1to1.hum.det.coding)
+```
+
+
 ```{r}
 write.table(unique(humMacMouOrth.1to1$external_gene_name.x),file="/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_categories/hummacmou.hum.db.txt",quote = FALSE, row.names = FALSE, col.names = FALSE)
 

@@ -1,0 +1,47 @@
+Compare SPG centroids with Brad's paper
+```{r}
+hum.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/HumanSPGCluster_AllGene_Centroids.txt", row.names = 1, header = TRUE)
+```
+
+Read in Brad's data
+```{r}
+brad <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/brad_data/GSE112013_Combined_UMI_table.txt", row.names = 1, header = TRUE)
+brad_label <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/brad_data/spermatogonia_labels_dot.txt",row.names = 1,header = TRUE)
+```
+
+```{r}
+gen.int <- intersect(rownames(hum.cen), rownames(brad))
+```
+
+brad.cen
+```{r}
+brad.norm <- apply(brad,2,function(x) x/sum(x)*10000)
+```
+
+```{r}
+brad.cen <- matrix(0, nrow = length(gen.int), ncol = length(unique(brad_label$States)))
+for(i in c(0:4)){
+  brad.cen[,i+1] = apply(brad.norm[gen.int, rownames(brad_label)[brad_label$States==i]],1,mean)
+}
+```
+
+```{r}
+hum.cen.int <- hum.cen[gen.int,]
+colnames(brad.cen) <- c(0:4)
+colnames(hum.cen.int) <- c(1:6)
+```
+
+```{r}
+cen.cor <- cor(hum.cen.int, brad.cen, method = "spearman")
+cen.cor <- round(cen.cor, 2)
+```
+
+```{r fig.width=5, fig.height=4}
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/brad_data/CompareWithBrad.pdf",width = 5, height = 4)
+Heatmap(cen.cor, cluster_rows = FALSE, cluster_columns = FALSE,name="Rank correlation",cell_fun = function(j, i, x, y, w, h, col) {
+        grid.text(cen.cor[i, j], x, y)
+    })
+dev.off()
+```
+
+

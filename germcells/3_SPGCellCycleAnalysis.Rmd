@@ -27,11 +27,74 @@ spg.cca@meta.data$cycle <- apply(spg.cca@data[cycle.genes,],2,sum)/apply(spg.cca
 ```
 
 ```{r}
-colfunc <- colorRampPalette(c("blue", "grey", "red"))
+colfunc <- colorRampPalette(c("blue", "grey90", "red"))
 ```
 
 ```{r fig.width=10,fig.height=6}
 FeaturePlot(object = spg.cca, features.plot = c("cycle","g1s","s","g2m","m","mg1"),cols.use = colfunc(100),nCol=3)
+```
+
+```{r fig.width=10,fig.height=6}
+FeaturePlot(object = spg.cca, features.plot = c("cycle","g1s","s","g2m","m","mg1"),cols.use = colfunc(100),nCol=3, cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+```
+
+```{r}
+redblue100.alpha<-rgb(read.table("~/storage/HumanMacaqueMouseCompAnaysis/redblue100.txt",sep='\t',row.names=1,header=T),alpha=0.8)
+
+set.ifnull=function(x,y) {
+  if(is.null(x)) return(y)
+  return(x)
+}
+translate.dim.code=function(reduction.use) {
+  if (reduction.use=="pca") return.code="PC"
+  if (reduction.use=="ica") return.code="IC"
+  if (reduction.use=="tsne") return.code="tSNE_"
+  if (reduction.use=="mds") return.code="MDS"
+  if (reduction.use=="umap") return.code="UMAP"
+  return(return.code)
+}
+
+plotfeature <- function(gene, name, cells.use=NULL){
+feature=features.plot=gene
+
+dim.1 = 1; dim.2 = 2; pt.size = 1;
+pch.use = 16; reduction.use = "tsne";
+use.imputed = FALSE; no.axes = TRUE; no.legend = FALSE
+
+cells.use <- set.ifnull(cells.use, spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dim.code <- translate.dim.code(reduction.use)
+dim.codes <- paste(dim.code, c(dim.1, dim.2), sep = "")
+data.plot <- as.data.frame(spg.cca@dr$tsne@cell.embeddings[cells.use,])
+
+x1 <- paste(dim.code, dim.1, sep = "")
+x2 <- paste(dim.code, dim.2, sep = "")
+
+data.plot$x <- data.plot[cells.use, x1]
+data.plot$y <- data.plot[cells.use, x2]
+data.plot$pt.size <- pt.size
+data.use <- data.frame(t(spg.cca@meta.data[cells.use,feature]))
+rownames(data.use)=feature
+
+data.gene0 <- na.omit(data.frame(data.use))
+data.plot$gene <- t(data.gene0)
+
+st6<- data.plot
+st6<-st6[order(st6[,6]),]
+z<-st6[,6]
+
+pdf(name,height=3,width=3)
+par(mar=c(0.5,0.5,2,0.5),mgp=c(1,0.5,0))
+z<-st6[,6]
+zcolor <- redblue100.alpha[(z - min(z))/diff(range(z))*100 + 1]
+plot(st6[,1],st6[,2], col=zcolor,pch=19,cex=0.3,cex.main=1.5,axes=F,main=features.plot,xlab="",ylab="")
+dev.off()
+}
+```
+
+```{r fig.width=3,fig.height=3}
+plotfeature("cycle", name = "~/storage/HumanMacaqueMouseCompAnaysis/CellCycle_whitefield/cyclescore_human.pdf", cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+plotfeature("cycle", name = "~/storage/HumanMacaqueMouseCompAnaysis/CellCycle_whitefield/cyclescore_monkey.pdf", cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Monkey" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+plotfeature("cycle", name = "~/storage/HumanMacaqueMouseCompAnaysis/CellCycle_whitefield/cyclescore_mouse.pdf", cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Mouse" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
 ```
 
 ##. using Whitefield's microarray data
@@ -168,7 +231,7 @@ TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle"
 ```
 
 ```{r fig.width=6.5, fig.height=4.5}
-colfunc <- colorRampPalette(c("blue", "lightgrey", "red"))
+colfunc <- colorRampPalette(c("blue", "lightgrey", "red", "lightgrey", "blue"))
 TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle", cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)], colors.use = colfunc(47))
 ```
 

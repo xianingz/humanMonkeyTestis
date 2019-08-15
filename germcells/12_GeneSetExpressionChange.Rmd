@@ -1,0 +1,352 @@
+
+```{r}
+BER=c("LIG3", "PNKP", "NTHL1", "UNG", "APEX1", "MPG", "NEIL3", "OGG1", "SMUG1", "MBD4", "MUTYH", "TDG", "NEIL1", "NEIL2", "APEX2", "XRCC1", "APLF")
+
+DR=c("MGMT", "ALKBH2", "ALKBH2")
+
+FA=c("PALB2", "FANCE", "FANCL", "FAAP24", "BTBD12", "BRIP1", "FANCI", "FANCD2", "FANCC", "FANCF", "FANCA", "FANCM", "FANCG", "FANCB", "RAD51C", "BRCA2")
+
+HR=c("RAD51", "RAD54B", "RAD54L", "DMC1", "BRCA1", "SHFM1", "RBBP8", "NBN", "MRE11A", "RAD50", "EME2", "EME1", "MUS81", "GIYD1", "GIYD2", "GEN1", "RAD52", "RAD51D", "RAD51B", "XRCC3", "XRCC2")
+
+MMR=c("MSH4", "PMS2", "PMS1", "MSH2", "MSH3", "MSH6", "MLH1", "MSH5", "PMS2L3")
+
+NER=c("CETN2", "RPA2", "RPA3", "TFIIH", "ERCC1", "ERCC8", "ERCC2", "ERCC3", "MNAT1", "LIG1", "GTF2H1", "GTF2H2", "GTF2H3", "GTF2H4", "RAD23B", "CCNH", "DDB2", "XPA", "XPC", "UVSSA", "MMS19", "DDB1", "ERCC5", "ERCC4", "RAD23A", "CDK7", "ERCC6", "GTF2H5", "XAB2")
+
+NHEJ=c("XRCC5", "XRCC6", "DCLRE1C", "LIG4", "XRCC4", "NHEJ1", "PRKDC")
+
+MISC=c("TDP1", "TDP2", "RECQL", "REV3L", "SPRTN", "MNAT1", "PARP3", "RRM2B", "POLQ", "POLD1", "RNF4", "TP53BP1", "RAD18", "HLTF", "UBE2A", "RIF1", "POLI", "NUDT1", "RECQL5", "PRPF19", "MAD2L2", "DCLRE1B", "UBE2B", "MLH3", "POLK", "POLM", "PARP2", "POLN", "REV1", "APTX", "MDC1", "NABP2", "POLG", "TP53", "PARP1", "SHPRH", "ATM", "RECQL4", "HELQ", "TOPBP1", "RNF168", "WRN", "POLL", "CHAF1A", "FEN1", "UBE2V2", "SETMAR", "POLH", "ENDOV", "EXO1", "ATR", "CLK2", "POLE", "PER1", "NHEJ1", "H2AFX", "BLM", "FAN1", "DCLRE1A", "RDM1", "ATRIP", "RAD1", "RAD9A", "HUS1", "RAD17", "CHEK1", "CHEK2")
+
+geneset.list <- list(BER, DR, FA, HR, MMR, NER, NHEJ, MISC)
+names(geneset.list) <- c("BER", "DR", "FA", "HR", "MMR", "NER", "NHEJ", "MISC")
+```
+
+
+```{r}
+>sum(BER %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 17
+> length(BER)
+[1] 17
+> length(DR)
+[1] 3
+> sum(DR %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 3
+> sum(FA %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 13
+> length(FA)
+[1] 16
+> length(HR)
+[1] 21
+> sum(HR %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 11
+> length(MMR)
+[1] 9
+> sum(MMR %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 6
+
+> length(NER)
+[1] 29
+> sum(NER %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 22
+
+> length(NHEJ)
+[1] 7
+> sum(NHEJ %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 5
+
+> length(MISC)
+[1] 67
+> sum(MISC %in% humMacMouOrth.1to1.in$external_gene_name.x)
+[1] 62
+
+```
+
+```{r}
+GeneSetPercentage26 <- function(geneset, title){
+hum.pro <- apply(hum.26.cen.1ortho, 2, function(x) sum(x[humMacMouOrth.1to1.in$external_gene_name.x %in% geneset])/sum(x))
+mac.pro <- apply(mac.26.cen.1ortho, 2, function(x) sum(x[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x %in% geneset]])/sum(x))
+mou.pro <- apply(mou.26.cen.1ortho, 2, function(x) sum(x[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x %in% geneset]])/sum(x))
+df <- data.frame(pro=c(hum.pro, mac.pro, mou.pro)*100, stage=rep(c(1:26),3),Species=c(rep("Human",26), rep("Monkey",26),rep("Mouse",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Expression Percentage") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2,23)) +
+  scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) +
+  ggtitle(title)
+p
+}
+```
+
+```{r fig.width=20,fig.height=15}
+plts <- list()
+for(i in c(1:8)){
+  p <- GeneSetPercentage26(geneset.list[[i]], title = names(geneset.list)[i])
+  plts[[i]] <- p
+  i = i+1
+}
+do.call("grid.arrange", c(plts, ncol=3))
+```
+
+```{r}
+GeneSetPercentage26(as.character(hsa.tf$Symbol), title = "TFs")
+```
+
+```{r}
+hum.cen <- cbind(hum.spg.cen, hum.germ.cen[rownames(hum.spg.cen),])
+mac.cen <- cbind(mac.spg.cen, mac.germ.cen[rownames(mac.spg.cen),])
+mou.cen <- cbind(mou.spg.cen, mou.germ.cen[rownames(mou.spg.cen),])
+```
+
+```{r}
+hum.111orth.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/D_human.text",header = FALSE)$V1)
+mac.111orth.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/D_monkey.text",header = FALSE)$V1)
+mou.111orth.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/D_mouse.text",header = FALSE)$V1)
+```
+
+
+```{r}
+GeneSetPercentage26_Indi <- function(hum.gs, mac.gs, mou.gs, title){
+hum.pro <- apply(hum.cen, 2, function(x) sum(x[hum.gs])/sum(x))
+mac.pro <- apply(mac.cen, 2, function(x) sum(x[mac.gs])/sum(x))
+mou.pro <- apply(mou.cen, 2, function(x) sum(x[mou.gs])/sum(x))
+df <- data.frame(pro=c(hum.pro, mac.pro, mou.pro)*100, stage=rep(c(1:26),3),Species=c(rep("Human",26), rep("Monkey",26),rep("Mouse",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Expression Percentage") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2,23)) +
+  scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) +
+  ggtitle(title)
+p
+}
+```
+
+add spg labels
+```{r}
+hum.spg.labels <- data.frame(cells = rownames(spg.cca@meta.data)[spg.cca@meta.data$species=="Human"], labels = spg.cca@meta.data$res.0.6.ord[spg.cca@meta.data$species=="Human"],stringsAsFactors=FALSE)
+hum.spg.labels <- hum.spg.labels[hum.spg.labels$labels %in% c(1:6),]
+
+mac.spg.labels <- data.frame(cells = rownames(spg.cca@meta.data)[spg.cca@meta.data$species=="Monkey"], labels = spg.cca@meta.data$res.0.6.ord[spg.cca@meta.data$species=="Monkey"],stringsAsFactors=FALSE)
+mac.spg.labels <- mac.spg.labels[mac.spg.labels$labels %in% c(1:6),]
+
+mou.spg.labels <- data.frame(cells = rownames(spg.cca@meta.data)[spg.cca@meta.data$species=="Mouse"], labels = spg.cca@meta.data$res.0.6.ord[spg.cca@meta.data$species=="Mouse"],stringsAsFactors=FALSE)
+mou.spg.labels <- mou.spg.labels[mou.spg.labels$labels %in% c(1:6),]
+
+hum.cells.lables$labels <- hum.cells.lables$labels + 6
+mac.cells.lables$labels <- mac.cells.lables$labels + 6
+mou.cells.lables$labels <- mou.cells.lables$labels + 6
+hum.cells.lables$cells <- as.character(hum.cells.lables$cells)
+mac.cells.lables$cells <- as.character(mac.cells.lables$cells)
+mou.cells.lables$cells <- as.character(mou.cells.lables$cells)
+hum.all.lables <- rbind(hum.spg.labels, hum.cells.lables)
+mac.all.lables <- rbind(mac.spg.labels, mac.cells.lables)
+mou.all.lables <- rbind(mou.spg.labels, mou.cells.lables)
+```
+
+
+```{r}
+GeneRatioCalculator <- function(exp, gs, label){
+  gr <- c()
+  for(i in c(1:26)){
+    ratios <- apply(exp[,as.character(label$cells)[label$labels==i]], 2, function(x) sum(x[gs]!=0)/sum(x!=0))
+    gr <- c(gr, mean(ratios))
+  }
+  gr
+}
+
+GeneNumberRatio_Indi <- function(hum.gs, mac.gs, mou.gs, title){
+hum.pro <- GeneRatioCalculator(dge.hum.raw, hum.gs, hum.all.lables)
+mac.pro <- GeneRatioCalculator(dge.mac.raw, mac.gs, mac.all.lables)
+mou.pro <- GeneRatioCalculator(dge.mou.raw, mou.gs, mou.all.lables)
+df <- data.frame(pro=c(hum.pro, mac.pro, mou.pro)*100, stage=rep(c(1:26),3),Species=c(rep("Human",26), rep("Monkey",26),rep("Mouse",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Percentage of genes expressed") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2,23)) +
+  scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) +
+  ggtitle(title)
+p
+}
+```
+
+
+```{r}
+GeneSetPercentage26_Indi(humMacMouOrth.1to1.in$external_gene_name.x, humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name, humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name, "1-1-1 Orthologs")
+```
+
+
+
+```{r}
+GeneSetPercentage26_Indi(hum.111orth.gs, mac.111orth.gs, mou.111orth.gs, "1-1-1 Orthologs")
+```
+
+```{r}
+GeneNumberRatio_Indi(hum.111orth.gs, mac.111orth.gs, mou.111orth.gs, "1-1-1 Orthologs")
+```
+
+```{r}
+hum.spe.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/A1.text",header = FALSE)$V1)
+mac.spe.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/A2.text",header = FALSE)$V1)
+mou.spe.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/A3.text",header = FALSE)$V1)
+```
+
+```{r}
+GeneSetPercentage26_Indi(hum.spe.gs, mac.spe.gs, mou.spe.gs, title = "Species Specific Genes")
+```
+
+```{r}
+GeneNumberRatio_Indi(hum.spe.gs, mac.spe.gs, mou.spe.gs, "Species Specific Genes")
+```
+
+```{r}
+primate.spe.hum.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/B1_human.text",header = FALSE)$V1)
+primate.spe.mac.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/B1_monkey.text",header = FALSE)$V1)
+```
+
+```{r}
+GeneSetPercentage26_hummac <- function(hum.gs, mac.gs, title){
+hum.pro <- apply(hum.cen, 2, function(x) sum(x[hum.gs])/sum(x))
+mac.pro <- apply(mac.cen, 2, function(x) sum(x[mac.gs])/sum(x))
+df <- data.frame(pro=c(hum.pro, mac.pro)*100, stage=rep(c(1:26),2),Species=c(rep("Human",26), rep("Monkey",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Expression Percentage") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2)) +
+  scale_color_manual(values=c("#e3a65a","#5a97e3")) +
+  ggtitle(title)
+p
+}
+```
+
+```{r}
+GeneNumberRatio_hummac <- function(hum.gs, mac.gs, title){
+hum.pro <- GeneRatioCalculator(dge.hum.raw, hum.gs, hum.all.lables)
+mac.pro <- GeneRatioCalculator(dge.mac.raw, mac.gs, mac.all.lables)
+df <- data.frame(pro=c(hum.pro, mac.pro)*100, stage=rep(c(1:26),2),Species=c(rep("Human",26), rep("Monkey",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Expression Percentage") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2)) +
+  scale_color_manual(values=c("#e3a65a","#5a97e3")) +
+  ggtitle(title)
+p
+}
+```
+
+```{r}
+GeneSetPercentage26_hummac(primate.spe.hum.gs, primate.spe.mac.gs, title = "Primate specific")
+```
+
+```{r}
+GeneNumberRatio_hummac(primate.spe.hum.gs, primate.spe.mac.gs, title = "Primate specific")
+```
+
+```{r fig.width=6, fig.height=20}
+hum1.pro <- apply(hum.cen, 2, function(x) sum(x[hum.111orth.gs])/sum(x))
+hum3.pro <- apply(hum.cen, 2, function(x) sum(x[hum.spe.gs])/sum(x))
+hum2.pro <- apply(hum.cen, 2, function(x) sum(x[primate.spe.hum.gs])/sum(x))
+df <- data.frame(pro=c(hum1.pro, hum2.pro, hum3.pro)*100, stage=rep(c(1:26),3),Species=c(rep("1-1-1 Orthologs",26), rep("Primates specific",26), rep("Human specific",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Expression Percentage") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2,23)) +
+  scale_color_manual(values=c("#625ae3","#5a97e3","#5adce3")) +
+  ggtitle("Human") + scale_y_continuous(breaks = round(seq(0,75, by = 5),1))
+p
+```
+
+```{r}
+macmou.spe.mou.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/B2_mouse.text",header = FALSE)$V1)
+macmou.spe.mac.gs <- as.character(read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/orthologues_new_categories/B2_monkey.text",header = FALSE)$V1)
+```
+
+```{r fig.width=6, fig.height=10}
+mou1.pro <- GeneRatioCalculator(dge.mou.raw, mou.111orth.gs, mou.all.lables)
+mou2.pro <- GeneRatioCalculator(dge.mou.raw, macmou.spe.mou.gs, mou.all.lables)
+mou3.pro <- GeneRatioCalculator(dge.mou.raw, mou.spe.gs, mou.all.lables)
+```
+
+```{r}
+df <- data.frame(pro=c(mou1.pro, mou2.pro, mou3.pro)*100, stage=rep(c(1:26),3),Species=c(rep("1-1-1 Orthologs",26), rep("Monkey-Mouse specific",26), rep("Mouse specific",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Expression Percentage") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2,23)) +
+  scale_color_manual(values=c("#625ae3","#5a97e3","#5adce3")) +
+  ggtitle("Mouse") + scale_y_continuous(breaks = round(seq(0,75, by = 5),1))
+p
+```
+
+```{r fig.width=6, fig.height=20}
+hum1.pro <- apply(hum.cen, 2, function(x) sum(x[hum.111orth.gs])/sum(x))
+hum3.pro <- apply(hum.cen, 2, function(x) sum(x[hum.spe.gs])/sum(x))
+hum2.pro <- apply(hum.cen, 2, function(x) sum(x[primate.spe.hum.gs])/sum(x))
+df <- data.frame(pro=c(hum1.pro, hum2.pro, hum3.pro)*100, stage=rep(c(1:26),3),Species=c(rep("1-1-1 Orthologs",26), rep("Primates specific",26), rep("Human specific",26)))
+p <- ggplot(data = df) + 
+  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
+                   fill = "#f9ecdc", alpha = 0.03)+  
+  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
+                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
+  ylab("Expression Percentage") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2,23)) +
+  scale_color_manual(values=c("#625ae3","#5a97e3","#5adce3")) +
+  ggtitle("Human") + scale_y_continuous(breaks = round(seq(0,75, by = 5),1))
+p
+```
+
+Plot genes across the stages
+```{r fig.width=18, fig.height=15}
+plts <- list()
+glist <- c("SYCP1","SYCP3","MLH1","MLH3","HORMAD1","ZCWPW1","ACRV1","PRM2","PGK2","HSPA1L")
+for(i in intersect(glist, humMacMouOrth.1to1.in$external_gene_name.x)){
+  df <- data.frame(hum=t(hum.germ.cen[i,]),mac=t(mac.germ.cen[i,]),mou=t(mou.germ.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x==i],]))
+  colnames(df) <- c("Human","Monkey","Mouse")
+  df <- melt(df)
+  df$stages <- rep(c(1:20),3)
+  p <- ggplot(data=df, aes(x=stages, y=value)) + 
+  geom_point(aes(stages,value,color=variable, shape=variable)) + geom_smooth(aes(stages,value,group=variable,color=variable),se=FALSE)  + 
+  ylab("Expression Level") +
+  xlab("Developmental Stages") +
+  scale_shape_manual(values=c(19, 2,23)) +
+  scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) +
+  ggtitle(i)
+  plts[[i]] <- p
+}
+do.call("grid.arrange", c(plts, ncol=3))
+```
+

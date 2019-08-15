@@ -19,8 +19,15 @@ rm(dge)
 load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mac_merged9_nospikeincells.Robj")
 dge.mac.raw <- dge@raw.data
 rm(dge)
-dge.mou.raw <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/GSE112393_MergedAdultMouseST25_DGE.txt",header = TRUE, row.names = 1,sep="\t")
+#dge.mou.raw <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/GSE112393_MergedAdultMouseST25_DGE.txt",header = TRUE, row.names = 1,sep="\t")
 ```
+
+```{r}
+dge.mou.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.germ.raw.rds")
+dge.mou.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.full.raw.rds")
+dge.mou.raw <- cbind(dge.mou.raw, dge.mou.spg.raw[rownames(dge.mou.raw),])
+```
+
 
 Move SPG clus 7 to germ and generate SPG clus 1-6 for three species.
 ```{r}
@@ -325,8 +332,12 @@ ca.cen.int.600.pca <- prcomp(t(ca.cen.int.600.norm), center = TRUE, scale. = TRU
 ```
 
 ```{r fig.width=7,fig.height=5}
-ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC2)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
-ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/germ.align.pca.pc1_2.pdf", width = 7, height = 5)
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC2)) + geom_point(aes(colour=species, shape=factor(traj), size=sqrt(num)))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+#dev.off()
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/germ.align.pca.pc1_3.pdf", width = 7, height = 5)
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=sqrt(num)))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6"))
+#dev.off()
 ```
 
 Redo PCA using top 30 PCs
@@ -798,6 +809,8 @@ humgene <- unique(humMac$ensembl_gene_id)
 humMacMou.AllGene <- merge(humMac, humMou, by = "ensembl_gene_id")
 rownames(hum_type) = hum_type$ensembl_gene_id
 hum.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene=="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene=="",]
+hum.orthos <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene!="" | humMacMou.AllGene$mmusculus_homolog_ensembl_gene!="",]
+hum.spe <- hum.spe[!hum.spe$external_gene_name.x %in% hum.orthos$external_gene_name.x,]
 hum.spe.coding <- hum.spe[hum_type[hum.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
 ```
 
@@ -834,6 +847,8 @@ dim(mouMac)
 mouHumMac.AllGene <- merge(mouHum, mouMac, by = "ensembl_gene_id")
 rownames(mou_type) = mou_type$ensembl_gene_id
 mou.spe <- mouHumMac.AllGene[mouHumMac.AllGene$mmulatta_homolog_ensembl_gene=="" & mouHumMac.AllGene$hsapiens_homolog_ensembl_gene=="",]
+mou.orthos <- mouHumMac.AllGene[mouHumMac.AllGene$mmulatta_homolog_ensembl_gene!=""|mouHumMac.AllGene$hsapiens_homolog_ensembl_gene!="",]
+mou.spe <- mou.spe[!mou.spe$external_gene_name.x %in% mou.orthos$external_gene_name.x,]
 mou.spe.coding <- mou.spe[mou_type[mou.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
 ```
 
@@ -870,6 +885,8 @@ dim(macMou)
 macHumMou.AllGene <- merge(macHum, macMou, by = "ensembl_gene_id")
 rownames(mac_type) = mac_type$ensembl_gene_id
 mac.spe <- macHumMou.AllGene[macHumMou.AllGene$mmusculus_homolog_ensembl_gene=="" & macHumMou.AllGene$hsapiens_homolog_ensembl_gene=="",]
+mac.orthos <- macHumMou.AllGene[macHumMou.AllGene$mmusculus_homolog_ensembl_gene!=""|macHumMou.AllGene$hsapiens_homolog_ensembl_gene!="",]
+mac.spe <- mac.spe[!mac.spe$external_gene_name.x %in% mac.orthos$external_gene_name.x,]
 mac.spe.coding <- mac.spe[mac_type[mac.spe$ensembl_gene_id,]$gene_biotype=="protein_coding",]
 ```
 
@@ -886,23 +903,27 @@ mac.spe.coding <- intersect(mac.spe.coding$external_gene_name.x, rownames(dge.ma
 #####. primate-specific genes (shared by human and monkey not in mouse)
 ```{r}
 hummac.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene!="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene=="",]
-hummac.spe.coding <- hummac.spe[hum_type[hummac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+hum.mou.orth <- humMacMou.AllGene[humMacMou.AllGene$mmusculus_homolog_ensembl_gene!="",]
+hummac.spe <- hummac.spe[!hummac.spe$external_gene_name.x %in% hum.mou.orth$external_gene_name.x,]
 ```
 
 ### filter by genes existing in our dataset.
 ```{r}
 ##for monkey replace empty gene name with corresponding ensembl gene id.
-hummac.spe.coding$mmulatta_homolog_associated_gene_name[hummac.spe.coding$mmulatta_homolog_associated_gene_name==""]=hummac.spe.coding$mmulatta_homolog_ensembl_gene[hummac.spe.coding$mmulatta_homolog_associated_gene_name==""]
+hummac.spe$mmulatta_homolog_associated_gene_name[hummac.spe$mmulatta_homolog_associated_gene_name==""]=hummac.spe$mmulatta_homolog_ensembl_gene[hummac.spe$mmulatta_homolog_associated_gene_name==""]
 
-hum.hummac.spe.coding <- intersect(hummac.spe.coding$external_gene_name.x,rownames(dge.hum.germ.norm))
-mac.hummac.spe.coding <-intersect(hummac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.norm))
+hum.hummac.spe.coding <- hummac.spe[hum_type[hummac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+hum.hummac.spe.coding <- intersect(hum.hummac.spe.coding$external_gene_name.x,rownames(dge.hum.germ.norm))
+
+mac.hummac.spe.coding <- hummac.spe[mac_type[hummac.spe$mmulatta_homolog_ensembl_gene, ]$gene_biotype=="protein_coding",]
+mac.hummac.spe.coding <-intersect(mac.hummac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.norm))
 ```
 
 ###. primate-specific genes
 ####. percentage of total expression
 ```{r fig.width=7,fig.height=5}
-hum.hummac.coding.perc <- apply(hum.201.cen[hum.hummac.spe.coding,],2,sum)/apply(hum.201.cen,2,sum)
-mac.hummac.coding.perc <- apply(mac.201.cen[mac.hummac.spe.coding,],2,sum)/apply(mac.201.cen,2,sum)
+hum.hummac.coding.perc <- apply(hum.201.cen[hum.hummac.spe.coding,],2,sum)/apply(hum.201.cen[hum.all.det.coding,],2,sum)
+mac.hummac.coding.perc <- apply(mac.201.cen[mac.hummac.spe.coding,],2,sum)/apply(mac.201.cen[mac.all.det.coding,],2,sum)
 
 pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/primates.exp.pdf",width = 7, height = 5)
 ggplot(data.frame(stages=c(1:201), orth=c(hum.hummac.coding.perc, mac.hummac.coding.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens),traj=rep(c(2,rep(1,200)),2), spe=c(rep("Human",201),rep("Monkey",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=sqrt(num))) + scale_color_manual(values = c("#e35a97","#5a97e3")) + xlab("Pseudo points") + ylab("Percentage of total expression") + ggtitle("Primates specific")
@@ -927,22 +948,26 @@ dev.off()
 #####. moumac-specific (orthologues between mouse and monkey no orthologues in mouse)
 ```{r}
 moumac.spe <- mouHumMac.AllGene[mouHumMac.AllGene$hsapiens_homolog_ensembl_gene=="" & mouHumMac.AllGene$mmulatta_homolog_ensembl_gene!="",]
-moumac.spe.coding <- moumac.spe[mou_type[moumac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+mou.hum <- mouHumMac.AllGene[mouHumMac.AllGene$hsapiens_homolog_ensembl_gene!="",]
+moumac.spe <- moumac.spe[!moumac.spe$external_gene_name.x %in% mou.hum$external_gene_name.x,]
 ```
 
 ### moumac specific genes
 ```{r}
 ##replace empty monkey gene name with corresponding ensembl gene id 
-moumac.spe.coding$mmulatta_homolog_associated_gene_name[moumac.spe.coding$mmulatta_homolog_associated_gene_name==""] = moumac.spe.coding$mmulatta_homolog_ensembl_gene[moumac.spe.coding$mmulatta_homolog_associated_gene_name==""]
-mou.moumac.spe.coding <- intersect(moumac.spe.coding$external_gene_name.x,rownames(dge.mou.germ.norm))
-mac.moumac.spe.coding <-intersect(moumac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.norm))
+moumac.spe$mmulatta_homolog_associated_gene_name[moumac.spe$mmulatta_homolog_associated_gene_name==""] = moumac.spe$mmulatta_homolog_ensembl_gene[moumac.spe$mmulatta_homolog_associated_gene_name==""]
+mou.moumac.spe.coding <- moumac.spe[mou_type[moumac.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+mou.moumac.spe.coding <- intersect(mou.moumac.spe.coding$external_gene_name.x,rownames(dge.mou.germ.norm))
+
+mac.moumac.spe.coding <- moumac.spe[mac_type[moumac.spe$mmulatta_homolog_ensembl_gene, ]$gene_biotype=="protein_coding",]
+mac.moumac.spe.coding <-intersect(mac.moumac.spe.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.norm))
 ```
 
 ###Mouse-monkey specific genes
 #### percentage of total expression
 ```{r fig.width=7,fig.height=5}
-mou.moumac.coding.perc <- apply(mou.201.cen[mou.moumac.spe.coding,],2,sum)/apply(mou.201.cen,2,sum)
-mac.moumac.coding.perc <- apply(mac.201.cen[mac.moumac.spe.coding,],2,sum)/apply(mac.201.cen,2,sum)
+mou.moumac.coding.perc <- apply(mou.201.cen[mou.moumac.spe.coding,],2,sum)/apply(mou.201.cen[mou.all.det.coding,],2,sum)
+mac.moumac.coding.perc <- apply(mac.201.cen[mac.moumac.spe.coding,],2,sum)/apply(mac.201.cen[mac.all.det.coding,],2,sum)
 
 pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/moumon.exp.pdf",width = 7, height = 5)
 ggplot(data.frame(stages=c(1:201), orth=c(mac.moumac.coding.perc, mou.moumac.coding.perc), num=c(dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=rep(c(2,rep(1,200)),2), spe=c(rep("Monkey",201),rep("Mouse",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=sqrt(num))) + scale_color_manual(values = c("#5a97e3","#5ae3a6")) + xlab("Pseudo points") + ylab("Percentage of total expression") + ggtitle("Mouse-Monkey specific")
@@ -966,20 +991,23 @@ dev.off()
 #####. hummou-specific genes (orthologues between human and mouse, no orthologues in monkey)
 ```{r}
 hummou.spe <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene=="" & humMacMou.AllGene$mmusculus_homolog_ensembl_gene!="", ]
-hummou.spe.coding <- hummou.spe[hum_type[hummou.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+hum.mac.orth <- humMacMou.AllGene[humMacMou.AllGene$mmulatta_homolog_ensembl_gene!="",]
+hummou.spe <- hummou.spe[!hummou.spe$external_gene_name.x %in% hum.mac.orth$external_gene_name.x,]
 ```
 
 ####filtered by genes that have expression in our datasets.
 ```{r}
-mou.hummou.spe.coding <- intersect(hummou.spe.coding$mmusculus_homolog_associated_gene_name,rownames(dge.mou.germ.norm))
-hum.hummou.spe.coding <-intersect(hummou.spe.coding$external_gene_name.x, rownames(dge.hum.germ.norm))
+mou.hummou.spe.coding <- hummou.spe[mou_type[hummou.spe$mmusculus_homolog_ensembl_gene, ]$gene_biotype=="protein_coding",]
+mou.hummou.spe.coding <- intersect(mou.hummou.spe.coding$mmusculus_homolog_associated_gene_name,rownames(dge.mou.germ.norm))
+hum.hummou.spe.coding <- hummou.spe[hum_type[hummou.spe$ensembl_gene_id, ]$gene_biotype=="protein_coding",]
+hum.hummou.spe.coding <-intersect(hum.hummou.spe.coding$external_gene_name.x, rownames(dge.hum.germ.norm))
 ```
 
 ####human-mouse specific genes
 #### percentage of total expression.
 ```{r fig.width=7,fig.height=5}
-mou.hummou.coding.perc <- apply(mou.201.cen[mou.hummou.spe.coding,],2,sum)/apply(mou.201.cen,2,sum)
-hum.hummou.coding.perc <- apply(hum.201.cen[hum.hummou.spe.coding,],2,sum)/apply(hum.201.cen,2,sum)
+mou.hummou.coding.perc <- apply(mou.201.cen[mou.hummou.spe.coding,],2,sum)/apply(mou.201.cen[mou.all.det.coding,],2,sum)
+hum.hummou.coding.perc <- apply(hum.201.cen[hum.hummou.spe.coding,],2,sum)/apply(hum.201.cen[hum.all.det.coding,],2,sum)
 
 pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/hummou.exp.pdf",width = 7, height = 5)
 ggplot(data.frame(stages=c(1:201), orth=c(hum.hummou.coding.perc, mou.hummou.coding.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=rep(c(2,rep(1,200)),2), spe=c(rep("Human",201),rep("Mouse",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=sqrt(num))) + scale_color_manual(values = c("#e35a97","#5ae3a6")) + xlab("Pseudo points") + ylab("Percentage of total expression") + ggtitle("Human-Mouse specific ")
@@ -1000,6 +1028,29 @@ ggplot(data.frame(stages=c(1:201), orth=c(hum.hummou.201.perc, mou.hummou.201.pe
 dev.off()
 ```
 
+###1-1-1 for each species
+
+####. One-to-one-to-one genes
+```{r}
+humMacMouOrth <- merge(humMacOrth,humMouOrth,by = "ensembl_gene_id")
+humMacMouOrth.1to1 <- humMacMouOrth[humMacMouOrth$mmulatta_homolog_orthology_type=="ortholog_one2one",]
+humMacMouOrth.1to1 <- humMacMouOrth.1to1[humMacMouOrth.1to1$mmusculus_homolog_orthology_type=="ortholog_one2one",]
+##replace empty monkey symbol with ensembl id
+humMacMouOrth.1to1$mmulatta_homolog_associated_gene_name[humMacMouOrth.1to1$mmulatta_homolog_associated_gene_name==""] = humMacMouOrth.1to1$mmulatta_homolog_ensembl_gene[humMacMouOrth.1to1$mmulatta_homolog_associated_gene_name==""]
+```
+
+```{r}
+humMacMouOrth.1to1.hum.coding <- humMacMouOrth.1to1[hum_type[humMacMouOrth.1to1$ensembl_gene_id,]$gene_biotype=="protein_coding",]
+humMacMouOrth.1to1.mac.coding <- humMacMouOrth.1to1[mac_type[humMacMouOrth.1to1$mmulatta_homolog_ensembl_gene,]$gene_biotype=="protein_coding",]
+humMacMouOrth.1to1.mou.coding <- humMacMouOrth.1to1[mou_type[humMacMouOrth.1to1$mmusculus_homolog_ensembl_gene,]$gene_biotype=="protein_coding",]
+```
+
+```{r}
+humMacMouOrth.1to1.hum.det.coding <- intersect(humMacMouOrth.1to1.hum.coding$external_gene_name.x, rownames(dge.hum.germ.raw))
+humMacMouOrth.1to1.mac.det.coding <- intersect(humMacMouOrth.1to1.mac.coding$mmulatta_homolog_associated_gene_name, rownames(dge.mac.germ.raw))
+humMacMouOrth.1to1.mou.det.coding <- intersect(humMacMouOrth.1to1.mou.coding$mmusculus_homolog_associated_gene_name, rownames(dge.mou.germ.raw))
+```
+
 ### Other types of orthologs (genes that have orthologues in all three species but not in 1-1-1 relationship)
 ```{r}
 #all detected human coding genes
@@ -1011,11 +1062,12 @@ hum.other.othos <- setdiff(hum.other.othos, hum.hummac.spe.coding)
 #remove hum-mou specific genes
 hum.other.othos <- setdiff(hum.other.othos, hum.hummou.spe.coding)
 #remove 1-1-1 orthologs
-hum.other.othos <- setdiff(hum.other.othos, humMacMouOrth.1to1.in$external_gene_name.x)
+hum.other.othos <- setdiff(hum.other.othos, humMacMouOrth.1to1.hum.det.coding)
 ```
 
 ```{r}
 #all detected monkey coding genes
+mac_type$external_gene_name[mac_type$external_gene_name==""]=mac_type$ensembl_gene_id[mac_type$external_gene_name==""]
 mac.all.det.coding <- intersect(mac_type$external_gene_name[mac_type$gene_biotype=="protein_coding"], rownames(dge.mac.germ.norm))
 #remove monkey specific genes
 mac.other.othos <- setdiff(mac.all.det.coding, mac.spe.coding)
@@ -1024,8 +1076,14 @@ mac.other.othos <- setdiff(mac.other.othos, mac.hummac.spe.coding)
 #remove mac-mou specific genes
 mac.other.othos <- setdiff(mac.other.othos, mac.moumac.spe.coding)
 #remove 1-1-1 orthologs
-mac.other.othos <- setdiff(mac.other.othos, humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name)
+mac.other.othos <- setdiff(mac.other.othos, humMacMouOrth.1to1.mac.det.coding)
+##remove 8 genes that are in both 1-1-1 and moumac specific from moumac specific and keep them in 1-1-1
+mac.moumac.spe.coding <- setdiff(mac.moumac.spe.coding, humMacMouOrth.1to1.mac.det.coding)
+##remove 2 genes that are both in hummac and moumac from moumac
+mac.moumac.spe.coding <- setdiff(mac.moumac.spe.coding,mac.hummac.spe.coding)
 ```
+8 genes like "PISD" are both in 1-1-1 and moumac specific genes.
+2 genes line "SYS1" are both in hummac and moumac genes list.
 
 ```{r}
 #all detected mouse coding genes
@@ -1037,20 +1095,28 @@ mou.other.othos <- setdiff(mou.other.othos, mou.hummou.spe.coding)
 #remove mac-mou specific genes
 mou.other.othos <- setdiff(mou.other.othos, mou.moumac.spe.coding)
 #remove 1-1-1 orthologs
-mou.other.othos <- setdiff(mou.other.othos, humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name)
+mou.other.othos <- setdiff(mou.other.othos, humMacMouOrth.1to1.mou.det.coding)
+##remove two genes that are both in 1-1-1 and hummou specific from hummou specific and keep them in 1-1-1
+mou.hummou.spe.coding <- setdiff(mou.hummou.spe.coding, humMacMouOrth.1to1.mou.det.coding)
 ```
+Two genes both in 1-1-1 and hummou specific "St6galnac2" "Jakmip1"
+```{r}
+
+```
+
 
 ### other types of orthologues
 #### percentage of total expression
 ```{r fig.width=7,fig.height=5}
-hum.other.othos.perc <- apply(hum.201.cen[hum.other.othos,],2,sum)/apply(hum.201.cen,2,sum)
-mac.other.othos.perc <- apply(mac.201.cen[mac.other.othos,],2,sum)/apply(mac.201.cen,2,sum)
-mou.other.othos.perc <- apply(mou.201.cen[mou.other.othos,],2,sum)/apply(mou.201.cen,2,sum)
+hum.other.othos.perc <- apply(hum.201.cen[hum.other.othos,],2,sum)/apply(hum.201.cen[hum.all.det.coding,],2,sum)
+mac.other.othos.perc <- apply(mac.201.cen[mac.other.othos,],2,sum)/apply(mac.201.cen[mac.all.det.coding,],2,sum)
+mou.other.othos.perc <- apply(mou.201.cen[mou.other.othos,],2,sum)/apply(mou.201.cen[mou.all.det.coding,],2,sum)
 
 pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/otherortho.exp.pdf",width = 7, height = 5)
 ggplot(data.frame(stages=c(1:201), orth=c(hum.other.othos.perc, mac.other.othos.perc, mou.other.othos.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)), spe=c(rep("Human",201),rep("Monkey",201),rep("Mouse",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=sqrt(num))) + scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + xlab("Pseudo points") + ylab("Percentage of total expression") + ggtitle("Other types of three species Orthologs")
 dev.off()
 ```
+
 
 ### other types of orthologues
 #### ratio of expressed genes
@@ -1064,36 +1130,13 @@ ggplot(data.frame(stages=c(1:201), orth=c(hum.other.othos.201.perc, mac.other.ot
 dev.off()
 ```
 
-### int.genes
-```{r fig.width=7,fig.height=5}
-hum.int.perc <- apply(hum.201.cen[int.genes$external_gene_name.x,],2,sum)/apply(hum.201.cen,2,sum)
-
-mac.int.perc <- apply(mac.201.cen[int.genes$mmulatta_homolog_associated_gene_name,],2,sum)/apply(mac.201.cen,2,sum)
-
-mou.int.perc <- apply(mou.201.cen[int.genes$mmusculus_homolog_associated_gene_name,],2,sum)/apply(mou.201.cen,2,sum)
-
-dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.int.perc, mac.int.perc, mou.int.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
-ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
-
-dat <- data.frame(ca.cen.int.600.pca$x, orth=c(hum.int.perc, rep(NA,201), rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
-ggplot(dat[seq(dim(dat)[1],1),], aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
-
-dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), mac.int.perc, rep(NA,201)), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
-ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
-
-dat <- data.frame(ca.cen.int.600.pca$x, orth=c(rep(NA,201), rep(NA,201), mou.int.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)))
-ggplot(dat, aes(PC1,PC3)) + geom_point(aes(colour=orth, shape=factor(traj), size=num/100)) + scale_color_gradientn(colours = c("#0000b3","#ededed","#b30000")) 
-```
-
-
-Three species specific 
+Three species specific gene
 ```{r}
 hum.spe.201.perc <- calcvperc(hum.spe.coding, dge.hum.germ.norm, dge.hum.spg.norm, hummac.mapping$refAssign)
 mac.spe.201.perc <- calcvperc(mac.spe.coding, dge.mac.germ.norm, dge.mac.spg.norm, hummac.mapping$queryAssign)
 mou.spe.201.perc <- calcvperc(mou.spe.coding, dge.mou.germ.norm, dge.mou.spg.norm, hummou.mapping$queryAssign)
 ```
 
-Plot by three rows
 ```{r fig.width=7,fig.height=5}
 pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spe.specific.genratio.pdf",width = 7, height = 5)
 ggplot(data.frame(stages=c(1:201), orth=c(hum.spe.201.perc, mac.spe.201.perc, mou.spe.201.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)), spe=c(rep("Human",201),rep("Monkey",201),rep("Mouse",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=sqrt(num))) + scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + xlab("Pseudo points") + ylab("Percentage of expressed genes") + ggtitle("Species specific")
@@ -1101,12 +1144,12 @@ dev.off()
 ```
 
 ```{r fig.width=7,fig.height=5}
-hum.spe.coding.perc <- apply(hum.201.cen[hum.spe.coding,],2,sum)/apply(hum.201.cen,2,sum)
-mac.spe.coding.perc <- apply(mac.201.cen[mac.spe.coding,],2,sum)/apply(mac.201.cen,2,sum)
-mou.spe.coding.perc <- apply(mou.201.cen[mou.spe.coding,],2,sum)/apply(mou.201.cen,2,sum)
+hum.spe.coding.perc <- apply(hum.201.cen[hum.spe.coding,],2,sum)/apply(hum.201.cen[hum.all.det.coding,],2,sum)
+mac.spe.coding.perc <- apply(mac.201.cen[mac.spe.coding,],2,sum)/apply(mac.201.cen[mac.all.det.coding,],2,sum)
+mou.spe.coding.perc <- apply(mou.201.cen[mou.spe.coding,],2,sum)/apply(mou.201.cen[mou.all.det.coding,],2,sum)
 
 pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spe.specific.exp.pdf",width = 7, height = 5)
-ggplot(data.frame(stages=c(1:201), orth=c(hum.spe.coding.perc, mac.spe.coding.perc, mou.spe.coding.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)), spe=c(rep("Human",201),rep("Monkey",201),rep("Mouse",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=num/100)) + scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + xlab("Pseudo points") + ylab("Percentage of total expression") + ggtitle("Species specific")
+ggplot(data.frame(stages=c(1:201), orth=c(hum.spe.coding.perc, mac.spe.coding.perc, mou.spe.coding.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)), spe=c(rep("Human",201),rep("Monkey",201),rep("Mouse",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=sqrt(num))) + scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + xlab("Pseudo points") + ylab("Percentage of total expression") + ggtitle("Species specific")
 dev.off()
 ```
 
@@ -1115,11 +1158,11 @@ humMacMouOrth.1to1.in.coding <- humMacMouOrth.1to1.in[hum_type[humMacMouOrth.1to
 ```
 
 ```{r fig.width=7,fig.height=5}
-hum.111orth.coding.perc <- apply(hum.201.cen[humMacMouOrth.1to1.in.coding$external_gene_name.x,],2,sum)/apply(hum.201.cen,2,sum)
-mac.111orth.coding.perc <- apply(mac.201.cen[humMacMouOrth.1to1.in.coding$mmulatta_homolog_associated_gene_name,],2,sum)/apply(mac.201.cen,2,sum)
-mou.111orth.coding.perc <- apply(mou.201.cen[humMacMouOrth.1to1.in.coding$mmusculus_homolog_associated_gene_name,],2,sum)/apply(mou.201.cen,2,sum)
+hum.111orth.coding.perc <- apply(hum.201.cen[humMacMouOrth.1to1.hum.det.coding,],2,sum)/apply(hum.201.cen[hum.all.det.coding,],2,sum)
+mac.111orth.coding.perc <- apply(mac.201.cen[humMacMouOrth.1to1.mac.det.coding,],2,sum)/apply(mac.201.cen[mac.all.det.coding,],2,sum)
+mou.111orth.coding.perc <- apply(mou.201.cen[humMacMouOrth.1to1.mou.det.coding,],2,sum)/apply(mou.201.cen[mou.all.det.coding,],2,sum)
 
-pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/111orth.coding.exp.pdf",width = 7, height = 5)
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/111orth.separate.coding.exp.pdf",width = 7, height = 5)
 ggplot(data.frame(stages=c(1:201), orth=c(hum.111orth.coding.perc, mac.111orth.coding.perc, mou.111orth.coding.perc), num=c(dim(dge.hum.spg.raw)[2],hum.lens, dim(dge.mac.spg.raw)[2],mac.lens, dim(dge.mou.spg.raw)[2], mou.lens),traj=c(2,rep(1,200),rep(c(2,rep(1,200)),2)), spe=c(rep("Human",201),rep("Monkey",201),rep("Mouse",201))), aes(stages,orth)) + geom_point(aes(colour=spe, shape=factor(traj), size=sqrt(num))) + scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + xlab("Pseudo points") + ylab("Percentage of total expression") + ggtitle("1-1-1 Orthologues (Coding)")
 dev.off()
 ```
@@ -1160,7 +1203,9 @@ ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600))
 
 ### Plot the mapping for each dot onto the central principle curve.
 ```{r fig.width=7,fig.height=5}
-ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),2,rep(1,142), rep(3,58),2, rep(1,200))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=num/100))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + scale_shape_manual(values = c(20, 17, 3)) + geom_line(data=data.frame(fit$s), aes(PC1, PC3)) + geom_segment(aes(x=x,y=y,xend=xend,yend=yend), colour="grey", size=0.2, data=data.frame(x=ca.cen.int.600.pca$x[rmmac,"PC1"], y=ca.cen.int.600.pca$x[rmmac,"PC3"], xend=fit$s[,"PC1"], yend=fit$s[,"PC3"]))
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/germ.align.principlecurve.pdf", width = 7, height = 5)
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),2,rep(1,142), rep(3,58),2, rep(1,200))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=sqrt(num)))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + scale_shape_manual(values = c(20, 17, 3)) + geom_line(data=data.frame(fit$s), aes(PC1, PC3)) + geom_segment(aes(x=x,y=y,xend=xend,yend=yend), colour="grey", size=0.2, data=data.frame(x=ca.cen.int.600.pca$x[rmmac,"PC1"], y=ca.cen.int.600.pca$x[rmmac,"PC3"], xend=fit$s[,"PC1"], yend=fit$s[,"PC3"]))
+#dev.off()
 ```
 
 ##20 cluster centoids by cutting the principle curve to 20 segments with equal length. Then, 20 cluster centroids are generated for each species.
@@ -1170,38 +1215,60 @@ pc.step <- (pc.len + 0.01)/20 ##add 0.01 to include the last point
 hum.lambda <- fit$lambda[1:200]
 hum.20.warped.cen <- matrix(0, nrow=dim(dge.hum.germ.norm)[1], ncol=20)
 hum.20.lens <- c()
+hum.cells <- c()
+hum.labels <- c()
 for(i in c(1:20)){
   segs <- which(hum.lambda >= pc.step*(i-1) & hum.lambda < pc.step*i)
   cells <- unlist(lapply(segs,function(x) hummac.mapping$refAssign[[x]]))
   hum.20.lens <- c(hum.20.lens, length(cells))
+  hum.cells <- c(hum.cells, cells)
+  hum.labels <- c(hum.labels, rep(i, length(cells)))
   hum.20.warped.cen[,i] <- apply(dge.hum.germ.norm[,cells],1,mean)
 }
+hum.cells.lables <- data.frame(cells=hum.cells, labels=hum.labels)
 
 mac.lambda <- fit$lambda[201:342]
 mac.20.warped.cen <- matrix(0, nrow=dim(dge.mac.germ.norm)[1], ncol=20)
 mac.20.lens <- c()
+mac.cells <- c()
+mac.labels <- c()
 for(i in c(1:20)){
   segs <- which(mac.lambda >= pc.step*(i-1) & mac.lambda < pc.step*i)
   cells <- unlist(lapply(segs,function(x) hummac.mapping$queryAssign[[x]]))
   mac.20.lens <- c(mac.20.lens, length(cells))
+  mac.cells <- c(mac.cells, cells)
+  mac.labels <- c(mac.labels, rep(i, length(cells)))
   mac.20.warped.cen[,i] <- apply(dge.mac.germ.norm[,cells],1,mean)
 }
+mac.cells.lables <- data.frame(cells=mac.cells, labels=mac.labels)
 
 mou.lambda <- fit$lambda[343:542]
 mou.20.warped.cen <- matrix(0, nrow=dim(dge.mou.germ.norm)[1], ncol=20)
 mou.20.lens <- c()
+mou.cells <- c()
+mou.labels <- c()
 for(i in c(1:20)){
   segs <- which(mou.lambda >= pc.step*(i-1) & mou.lambda < pc.step*i)
   cells <- unlist(lapply(segs,function(x) hummou.mapping$queryAssign[[x]]))
   mou.20.lens <- c(mou.20.lens, length(cells))
+  mou.cells <- c(mou.cells, cells)
+  mou.labels <- c(mou.labels, rep(i, length(cells)))
   mou.20.warped.cen[,i] <- apply(dge.mou.germ.norm[,cells],1,mean)
 }
+mou.cells.lables <- data.frame(cells=mou.cells, labels=mou.labels)
 ```
 
 ```{r}
 rownames(hum.20.warped.cen) <- rownames(dge.hum.germ.norm)
 rownames(mac.20.warped.cen) <- rownames(dge.mac.germ.norm)
 rownames(mou.20.warped.cen) <- rownames(dge.mou.germ.norm)
+```
+
+#### Write the 20 stages labels
+```{r}
+write.table(hum.cells.lables,file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/Hum.20.cells.labels.txt",quote = FALSE, row.names = FALSE, col.names = TRUE,sep = "\t")
+write.table(mac.cells.lables,file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/Mac.20.cells.labels.txt",quote = FALSE, row.names = FALSE, col.names = TRUE,sep = "\t")
+write.table(mou.cells.lables,file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/Mou.20.cells.labels.txt",quote = FALSE, row.names = FALSE, col.names = TRUE,sep = "\t")
 ```
 
 
@@ -1271,8 +1338,10 @@ ggplot(dat, aes(factor(spe), traj)) + geom_violin(aes(fill=factor(spe))) + coord
 
 ###Dot plot adding SPG as 6 clusters
 ```{r fig.width=8, fig.height=4}
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/flow_width.pdf", width = 8, height = 4)
 dat <- data.frame(traj = c(hum.26.lens,mac.26.lens,mou.26.lens), spe=c(rep("Human",26),rep("Monkey",26),rep("Mouse",26)), pt=rep(c(1:26),3))
-ggplot(dat, aes(pt, factor(spe))) + scale_size_continuous(range=c(1,10)) + geom_point(aes(col=factor(spe),size=sqrt(traj))) + labs(y="Pseudo-time from principle curve",x="Species") + geom_vline(xintercept = 6.5)
+ggplot(dat, aes(pt, factor(spe))) + scale_size_continuous(range=c(1,10)) + geom_point(aes(col=factor(spe),size=sqrt(traj))) + labs(x="Pseudo-time from principle curve",y="Species") + geom_vline(xintercept = 6.5)
+dev.off()
 ```
 
 ###Dot plot adding SPG as 1 cluster
@@ -2021,6 +2090,43 @@ ha = rowAnnotation(stages = mac.hvg.warped.kmeans.genes$stages, col = list(stage
 Heatmap(mac.cen.std[as.character(mac.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
 ```
 
+Write the genes for 21 cluster kmeans
+```{r}
+hum.kmeans <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/hum.germ.kmean.ortho.list.txt",header = TRUE, fill = TRUE, sep = "\t")
+mac.kmeans <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/mac.germ.kmean.ortho.list.txt",header = TRUE, fill = TRUE, sep="\t")
+mou.kmeans <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/mou.germ.kmean.ortho.list.txt",header = TRUE, fill = TRUE,sep="\t")
+```
+
+```{r}
+humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
+```
+
+
+```{r}
+orth.connect <- data.frame(humgen=humMacMouOrth.1to1.in$external_gene_name.x, macgen = humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name, mougen = humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name, humclu=rep(0, dim(humMacMouOrth.1to1.in)[1]),macclu=rep(0, dim(humMacMouOrth.1to1.in)[1]),mouclu=rep(0, dim(humMacMouOrth.1to1.in)[1]))
+```
+
+```{r}
+rownames(orth.connect) = humMacMouOrth.1to1.in$external_gene_name.x
+for(i in c(1:6)){
+  orth.connect[intersect(humMacMouOrth.1to1.in$external_gene_name.x,hum.kmeans[,i]),"humclu"] = i
+}
+
+rownames(orth.connect) = humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name
+for(i in c(1:6)){
+  orth.connect[intersect(humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,mac.kmeans[,i]),"macclu"] = i
+}
+
+rownames(orth.connect) = humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name
+for(i in c(1:6)){
+  orth.connect[intersect(humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,mou.kmeans[,i]),"mouclu"] = i
+}
+```
+
+```{r}
+write.table(orth.connect, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/GermOrthologConnection.txt",quote=FALSE,row.names=FALSE,col.names = TRUE,sep="\t")
+```
+
 
 1. Read in the datasets for germ cells and spg (4-62)
 2. Read in/Run monocle for three species (67-175)
@@ -2028,9 +2134,9 @@ Heatmap(mac.cen.std[as.character(mac.hvg.warped.kmeans.genes$genes),], cluster_r
 4. Caclulate 200 centroids (260-320)
 5. PCA on centroids (325-344)
 6. Analysis for gene expression pattern changes along the trajectory for multiple categories of orthologues. (347-1142)
-7. Trajectory alignment using Principle curve on the PC1-PC3 space for 200*3 pseduotime points. (1144-1171)
-8. Generate 20 clusters for aligned trajectories (1173-1220)
-9. Trajectory flow width (number of cells change along the trajectory) (1223-1289)
-10. PCA and heatmap for post-aligned 20-cluster-trajectories (1291-1326)
-11. K-means gene clustering for three trajectories (1328-1475)
-12. Orthologues connecting plots for k-means gene clusters (1475-2029)
+7. Trajectory alignment using Principle curve on the PC1-PC3 space for 200*3 pseduotime points. (1180-1202)
+8. Generate 20 clusters for aligned trajectories (1204-1251)
+9. Trajectory flow width (number of cells change along the trajectory) (1281-1322)
+10. PCA and heatmap for post-aligned 20-cluster-trajectories (1322-1360)
+11. K-means gene clustering for three trajectories (1360-1506)
+12. Orthologues connecting plots for k-means gene clusters (1508-2029)

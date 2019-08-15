@@ -17,7 +17,6 @@ dge.hum.raw <- dge.hum.raw[humMacMouOrth.1to1.in$external_gene_name.x,]
 dge.mac.raw <- dge.mac.raw[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,]
 ```
 
-
 ###. Full dataset
 ```{r}
 clushum <- read.table("./Human_Merged4Subjects-1235-NoC5_ClusterIDs_res.0.6order_Qianyi_1.9.2019.txt",row.names = 1,sep="\t",header = FALSE)
