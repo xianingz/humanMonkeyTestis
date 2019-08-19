@@ -227,11 +227,16 @@ show in the t-SNE plot
 ```{r fig.width=6.5, fig.height=4.5}
 spg.cca@meta.data$cellcycle <- 0
 spg.cca@meta.data[spg.cells.ord,]$cellcycle <- as.numeric(bupt)
-TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle", cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6,8)])
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle", cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
 ```
 
 ```{r fig.width=6.5, fig.height=4.5}
-colfunc <- colorRampPalette(c("blue", "lightgrey", "red", "lightgrey", "blue"))
+colfunc <- colorRampPalette(c("#e3625a", "lightgrey", "#236fce","#e3625a"))
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle", cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)], colors.use = colfunc(47))
+```
+
+```{r fig.width=6.5, fig.height=4.5}
+colfunc <- colorRampPalette(c("#236fce", "#e3625a","lightgrey", "#236fce"))
 TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle", cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)], colors.use = colfunc(47))
 ```
 
@@ -239,3 +244,60 @@ TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle"
 table(spg.cca@meta.data$cellcycle, spg.cca@meta.data$res.0.6.ord)
 ```
 
+##G0 estimate
+```{r}
+dge.hum.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.full.raw.rds")
+dge.mac.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.full.raw.rds")
+dge.mou.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.full.raw.rds")
+```
+
+```{r}
+spg.libsize <- c(apply(dge.hum.spg.raw,2,sum),apply(dge.mac.spg.raw,2,sum),apply(dge.mou.spg.raw,2,sum))
+```
+
+
+```{r}
+corr.max <- apply(corr,2,max)
+spg.maxcor.df <- data.frame(maxcor = corr.max, clus = spg.cca@meta.data[names(corr.max),]$res.0.6.ord, spe = spg.cca@meta.data[names(corr.max),]$species, libsize = spg.libsize[names(corr.max)], cycle = spg.cca@meta.data[names(corr.max),]$cycle)
+```
+
+```{r fig.width=10, fig.height=7}
+par(mfrow=c(2,3))
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 5000], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 5000], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size >= 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 4000 ~ 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 3000 ~ 4000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 2000 ~ 3000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 1000 ~ 2000")
+```
+
+```{r fig.width=10, fig.height=7}
+par(mfrow=c(2,3))
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 5000 & spg.maxcor.df$spe=="Human"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 5000 & spg.maxcor.df$spe=="Human"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size >= 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000 & spg.maxcor.df$spe=="Human"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000 & spg.maxcor.df$spe=="Human"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 4000 ~ 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000 & spg.maxcor.df$spe=="Human"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000 & spg.maxcor.df$spe=="Human"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 3000 ~ 4000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000 & spg.maxcor.df$spe=="Human"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000 & spg.maxcor.df$spe=="Human"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 2000 ~ 3000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000 & spg.maxcor.df$spe=="Human"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000 & spg.maxcor.df$spe=="Human"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 1000 ~ 2000")
+```
+
+```{r fig.width=10, fig.height=7}
+par(mfrow=c(2,3))
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 5000 & spg.maxcor.df$spe=="Monkey"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 5000 & spg.maxcor.df$spe=="Monkey"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size >= 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000 & spg.maxcor.df$spe=="Monkey"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000 & spg.maxcor.df$spe=="Monkey"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 4000 ~ 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000 & spg.maxcor.df$spe=="Monkey"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000 & spg.maxcor.df$spe=="Monkey"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 3000 ~ 4000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000 & spg.maxcor.df$spe=="Monkey"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000 & spg.maxcor.df$spe=="Monkey"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 2000 ~ 3000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000 & spg.maxcor.df$spe=="Monkey"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000 & spg.maxcor.df$spe=="Monkey"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 1000 ~ 2000")
+```
+
+```{r fig.width=10, fig.height=7}
+par(mfrow=c(2,3))
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 5000 & spg.maxcor.df$spe=="Mouse"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 5000 & spg.maxcor.df$spe=="Mouse"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size >= 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000 & spg.maxcor.df$spe=="Mouse"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 4000 & spg.maxcor.df$libsize < 5000 & spg.maxcor.df$spe=="Mouse"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 4000 ~ 5000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000 & spg.maxcor.df$spe=="Mouse"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 3000 & spg.maxcor.df$libsize < 4000 & spg.maxcor.df$spe=="Mouse"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 3000 ~ 4000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000 & spg.maxcor.df$spe=="Mouse"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 2000 & spg.maxcor.df$libsize < 3000 & spg.maxcor.df$spe=="Mouse"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 2000 ~ 3000")
+plot(spg.maxcor.df$cycle[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000 & spg.maxcor.df$spe=="Mouse"], spg.maxcor.df$maxcor[spg.maxcor.df$libsize >= 1000 & spg.maxcor.df$libsize < 2000 & spg.maxcor.df$spe=="Mouse"], pch=16, xlab = "Cycle score", ylab = "Max Correlation", main="Cell Size 1000 ~ 2000")
+```
+
+
+```{r}
+
+```

@@ -322,6 +322,20 @@ write.table(cbind(dge.mou.spg.cen, mou.200.cen), file = "~/storage/HumanMacaqueM
 ```
 
 
+##Revisit analysis
+Read the centroids file
+```{r}
+dge.hum.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.201.centroid.txt", sep = "\t", row.names = 1)
+dge.mac.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.201.centroid.txt", sep = "\t", row.names = 1)
+dge.mou.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.201.centroid.txt", sep = "\t", row.names = 1)
+ca.cen.int.600 <- cbind(dge.hum.cen[int.genes$external_gene_name.x,], dge.mac.cen[int.genes$mmulatta_homolog_associated_gene_name,],  dge.mou.cen[int.genes$mmusculus_homolog_associated_gene_name,])
+
+colnames(ca.cen.int.600) <- c(rep("Human",201),rep("Monkey",201),rep("Mouse",201))
+ca.cen.int.600.norm <- apply(ca.cen.int.600,2,function(x) x/sum(x)*1000)
+ca.cen.int.600.pca <- prcomp(t(ca.cen.int.600.norm), center = TRUE, scale. = TRUE)
+```
+
+
 ### Merge the 201 centroids from each species, use the intersection of the HVGs to do PCA
 ```{r}
 ca.cen.int.600 <- cbind(dge.hum.spg.cen[int.genes$external_gene_name.x],hum.200.cen[int.genes$external_gene_name.x,], dge.mac.spg.cen[int.genes$mmulatta_homolog_associated_gene_name], mac.200.cen[int.genes$mmulatta_homolog_associated_gene_name,], dge.mou.spg.cen[int.genes$mmusculus_homolog_associated_gene_name], mou.200.cen[int.genes$mmusculus_homolog_associated_gene_name,])
@@ -1204,7 +1218,7 @@ ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600))
 ### Plot the mapping for each dot onto the central principle curve.
 ```{r fig.width=7,fig.height=5}
 #pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/germ.align.principlecurve.pdf", width = 7, height = 5)
-ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),2,rep(1,142), rep(3,58),2, rep(1,200))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=sqrt(num)))+ scale_color_manual(values = c("#e35a97","#5a97e3","#5ae3a6")) + scale_shape_manual(values = c(20, 17, 3)) + geom_line(data=data.frame(fit$s), aes(PC1, PC3)) + geom_segment(aes(x=x,y=y,xend=xend,yend=yend), colour="grey", size=0.2, data=data.frame(x=ca.cen.int.600.pca$x[rmmac,"PC1"], y=ca.cen.int.600.pca$x[rmmac,"PC3"], xend=fit$s[,"PC1"], yend=fit$s[,"PC3"]))
+ggplot(data.frame(ca.cen.int.600.pca$x, species=factor(colnames(ca.cen.int.600)), num=c(dim(dge.hum.spg.norm)[2],hum.lens, dim(dge.mac.spg.norm)[2],mac.lens, dim(dge.mou.spg.norm)[2], mou.lens),traj=c(2,rep(1,200),2,rep(1,142), rep(3,58),2, rep(1,200))), aes(PC1,PC3)) + geom_point(aes(colour=species, shape=factor(traj), size=sqrt(num))) + scale_shape_manual(values = c(20, 17, 3)) + geom_line(data=data.frame(fit$s), aes(PC1, PC3)) + geom_segment(aes(x=x,y=y,xend=xend,yend=yend), colour="grey", size=0.2, data=data.frame(x=ca.cen.int.600.pca$x[rmmac,"PC1"], y=ca.cen.int.600.pca$x[rmmac,"PC3"], xend=fit$s[,"PC1"], yend=fit$s[,"PC3"])) + scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) + labs(color='Species') + labs(size='#Cells')  + guides(colour = guide_legend(override.aes = list(size=4)), shape=FALSE)
 #dev.off()
 ```
 
@@ -1338,10 +1352,19 @@ ggplot(dat, aes(factor(spe), traj)) + geom_violin(aes(fill=factor(spe))) + coord
 
 ###Dot plot adding SPG as 6 clusters
 ```{r fig.width=8, fig.height=4}
-pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/flow_width.pdf", width = 8, height = 4)
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/flow_width.pdf", width = 8, height = 4)
 dat <- data.frame(traj = c(hum.26.lens,mac.26.lens,mou.26.lens), spe=c(rep("Human",26),rep("Monkey",26),rep("Mouse",26)), pt=rep(c(1:26),3))
 ggplot(dat, aes(pt, factor(spe))) + scale_size_continuous(range=c(1,10)) + geom_point(aes(col=factor(spe),size=sqrt(traj))) + labs(x="Pseudo-time from principle curve",y="Species") + geom_vline(xintercept = 6.5)
-dev.off()
+#dev.off()
+```
+
+###Dot plot adding Monkey extra
+```{r fig.width=8, fig.height=4}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/flow_width.pdf", width = 8, height = 4)
+mac.extra <- length(unlist(lapply(c(143:200), function(x) hummac.mapping$queryAssign[[x]])))
+dat <- data.frame(traj = c(hum.26.lens,NA,mac.26.lens,mac.extra,mou.26.lens,NA), spe=c(rep("Human",27),rep("Monkey",27),rep("Mouse",27)), pt=rep(c(1:27),3))
+ggplot(dat, aes(pt, factor(spe))) + scale_size_continuous(range=c(1,10)) + geom_point(aes(col=factor(spe),size=sqrt(traj))) + labs(x="Pseudo-time from principle curve",y="Species") + geom_vline(xintercept = 6.5, linetype="dotted") + geom_vline(xintercept = 26.5, linetype="dotted") + labs(color='Species') + labs(size='#Cells') + scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) + guides(colour = guide_legend(override.aes = list(size=4)))
+#dev.off()
 ```
 
 ###Dot plot adding SPG as 1 cluster
@@ -1391,9 +1414,9 @@ Heatmap(aligned.20.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
 
 ####add SPG centroid in to the 20 aligned cluster centroids
 ```{r}
-hum.cen <- cbind(dge.hum.spg.cen[humMacMouOrth.1to1.in$external_gene_name.x], aligned.20.all.cen[,c(1:20)])
-mac.cen <- cbind(dge.mac.spg.cen[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name], aligned.20.all.cen[,c(21:40)])
-mou.cen <- cbind(dge.mou.spg.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name], aligned.20.all.cen[,c(41:60)])
+hum.cen <- cbind(dge.hum.spg.cen[humMacMouOrth.1to1.in$external_gene_name.x], hum.20.warped.cen[humMacMouOrth.1to1.in$external_gene_name.x,])
+mac.cen <- cbind(dge.mac.spg.cen[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name], mac.20.warped.cen[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,])
+mou.cen <- cbind(dge.mou.spg.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name], mou.20.warped.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,])
 ```
 
 ```{r}
@@ -1453,6 +1476,14 @@ p <- ggplot(mac.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),siz
 p2 <- ggMarginal(p, type="density")
 grid.arrange(p2, ncol=1)
 ```
+
+```{r fig.width=5,fig.height=5}
+plot(mac.gen$mean, mac.gen$varmean, pch=16, cex=0.5)
+points(mac.gen[hum.extra.genes$mmulatta_homolog_associated_gene_name,]$mean,mac.gen[hum.extra.genes$mmulatta_homolog_associated_gene_name,]$varmean, col="red", pch=16, cex=0.5)
+abline(v = 0.2)
+abline(h = 0.2)
+```
+
 
 ```{r fig.width=5,fig.height=5}
 g.mean <- apply(mou.cen.norm.lg,1,mean)
@@ -1597,6 +1628,8 @@ for(i in c(1:6)){
 ```
 
 ```{r fig.width=4, fig.height=10}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.pdf", width = 4, height = 10)
+tiff("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.tiff", units="in", width=4, height=10, res=600)
 cols <- c("#fabc3c",
 "#a64dd4",
 "#14e072",
@@ -1615,11 +1648,12 @@ for(i in c(1:dim(kmeans.hum.mac.genes)[1])){
   y = 1000-y*1000/dim(mac.hvg.warped.kmeans.genes)[1]
   #print(x)
   #print(y)
-  segments(1,x,2,y,lwd = 0.1)
+  segments(1,x,2,y,lwd = 0.2, col="#616161")
 }
 points(data.frame(x=rep(1,dim(hum.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(hum.hvg.warped.kmeans.genes)[1])*1000/dim(hum.hvg.warped.kmeans.genes)[1]),col=cols[hum.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
 points(data.frame(x=rep(2,dim(mac.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mac.hvg.warped.kmeans.genes)[1])*1000/dim(mac.hvg.warped.kmeans.genes)[1]),col=cols[mac.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
 #segments(1,0,10,0,col = "red")
+dev.off()
 ```
 
 ```{r fig.width=4, fig.height=10}
@@ -1629,9 +1663,9 @@ cols <- c("#fabc3c",
 "#d9014a",
 "#abb4ff",
 "#b28e00")
-ha = rowAnnotation(stages = mac.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+ha = rowAnnotation(stages = mac.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
 #ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
-Heatmap(mac.cen.std[as.character(mac.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+Heatmap(mac.cen.std[as.character(mac.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
 ```
 
 ```{r fig.width=4, fig.height=10}
@@ -1641,10 +1675,144 @@ cols <- c("#fabc3c",
 "#d9014a",
 "#abb4ff",
 "#b28e00")
-ha = rowAnnotation(stages = hum.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+ha = rowAnnotation(stages = hum.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
 #ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
-Heatmap(hum.cen.std[as.character(hum.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+Heatmap(hum.cen.std[as.character(hum.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
 ```
+
+##20190816 Add extra genes from human that are not found in Monkey HVGs to the plot
+#Connector lines
+```{r}
+kmeans.hum.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.hvgs,]
+
+hum.extra.genes <- kmeans.hum.genes[!kmeans.hum.genes$mmulatta_homolog_associated_gene_name %in% mac.hvgs,]
+
+max.extra.cor <- cor(t(mac.cen.std[mac.hvgs,]),t(mac.cen.std[hum.extra.genes$mmulatta_homolog_associated_gene_name,]), method = "spearman")
+mac.max.cor <- apply(max.extra.cor,2,max)
+mac.mean <- apply(mac.cen[hum.extra.genes$mmulatta_homolog_associated_gene_name,],1,mean)
+```
+
+```{r fig.width=5,fig.height=5}
+plot(log(mac.mean), mac.max.cor) + abline(v=-3) + abline(h=0.8)
+```
+
+
+```{r}
+kmeans.mac.genes.add <- mac.hvg.warped.kmeans.genes
+for(i in hum.extra.genes$mmulatta_homolog_associated_gene_name){
+  if(mac.max.cor[i] >= 0.8 & log(mac.mean[i])>-3){
+    max.cor.gene <- names(which.max(max.extra.cor[,i]))
+    max.cor.stage <- kmeans.mac.genes.add$stages[kmeans.mac.genes.add$genes==max.cor.gene]
+    kmeans.mac.genes.add <- rbind(kmeans.mac.genes.add, data.frame(genes=i, stages=max.cor.stage))
+  }else{
+    kmeans.mac.genes.add <- rbind(kmeans.mac.genes.add, data.frame(genes=i, stages=7))
+  }
+}
+kmeans.mac.genes.add <- kmeans.mac.genes.add[order(kmeans.mac.genes.add$stages),]
+```
+
+```{r}
+pos.hum.mac <- c()
+for(i in c(1:dim(kmeans.hum.genes)[1])){
+  hum.gen <- kmeans.hum.genes$external_gene_name.x[i]
+  mac.gen <- kmeans.hum.genes$mmulatta_homolog_associated_gene_name[i]
+  x = which(hum.hvg.warped.kmeans.genes$genes == hum.gen)
+  y = which(kmeans.mac.genes.add$genes == mac.gen)
+  pos.hum.mac <- rbind(pos.hum.mac,c(x,y,hum.gen, mac.gen))
+}
+pos.hum.mac <- data.matrix(pos.hum.mac)
+colnames(pos.hum.mac) = c("hum.pos","mac.pos", "hum.gen","mac.gen")
+
+
+#Sort within each cluster
+
+rownames(pos.hum.mac) <- pos.hum.mac[,"hum.gen"]
+hum.kmeans.genes.ord <- hum.hvg.warped.kmeans.genes
+for(i in c(1:6)){
+  genes <- hum.hvg.warped.kmeans.genes$genes[hum.hvg.warped.kmeans.genes$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mac[,"hum.gen"]])
+  genes <- pos.hum.mac[,"hum.gen"][pos.hum.mac[,"hum.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mac[genes,"mac.pos"]))]
+  hum.kmeans.genes.ord$genes[hum.hvg.warped.kmeans.genes$stages==i] = c(genes,ogenes)
+}
+
+pos.hum.mac <- c()
+for(i in c(1:dim(hum.kmeans.genes.ord)[1])){
+  hum.gen <- hum.kmeans.genes.ord$genes[i]
+  mac.gen <- kmeans.hum.genes$mmulatta_homolog_associated_gene_name[kmeans.hum.genes$external_gene_name.x==hum.gen]
+  x = which(hum.kmeans.genes.ord$genes == hum.gen)
+  y = which(kmeans.mac.genes.add$genes == mac.gen)
+  pos.hum.mac <- rbind(pos.hum.mac,c(x,y,hum.gen, mac.gen))
+}
+pos.hum.mac <- data.matrix(pos.hum.mac)
+colnames(pos.hum.mac) = c("hum.pos","mac.pos", "hum.gen","mac.gen")
+
+rownames(pos.hum.mac) <- pos.hum.mac[,"mac.gen"]
+mac.kmeans.genes.ord <- kmeans.mac.genes.add
+for(i in c(1:7)){
+  genes <- kmeans.mac.genes.add$genes[kmeans.mac.genes.add$stages==i]
+  ogenes <- as.character(genes[!genes %in% pos.hum.mac[,"mac.gen"]])
+  genes <- pos.hum.mac[,"mac.gen"][pos.hum.mac[,"mac.gen"] %in% genes]
+  genes <- genes[order(as.numeric(pos.hum.mac[genes,"hum.pos"]))]
+  mac.kmeans.genes.ord$genes[kmeans.mac.genes.add$stages==i] = c(genes,ogenes)
+}
+```
+
+```{r fig.width=4, fig.height=10}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.pdf", width = 4, height = 10)
+#tiff("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.tiff", units="in", width=4, height=10, res=1200)
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00",
+"grey")
+plot(1,xlim=c(1,2),ylim=c(0,1200),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(kmeans.hum.genes)[1])){
+#for(i in c(1:10)){ 
+  x = which(hum.kmeans.genes.ord$genes == kmeans.hum.genes$external_gene_name.x[i])
+  y = which(mac.kmeans.genes.ord$genes == kmeans.hum.genes$mmulatta_homolog_associated_gene_name[i])
+  #print(kmeans.hum.mac.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mac.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1200-x*1000/dim(hum.hvg.warped.kmeans.genes)[1]
+  y = 1200-y*1200/dim(kmeans.mac.genes.add)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.1,col = "grey60")
+}
+points(data.frame(x=rep(1,dim(hum.hvg.warped.kmeans.genes)[1]),y=1200-c(1:dim(hum.hvg.warped.kmeans.genes)[1])*1000/dim(hum.hvg.warped.kmeans.genes)[1]),col=cols[hum.kmeans.genes.ord$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(kmeans.mac.genes.add)[1]),y=1200-c(1:dim(kmeans.mac.genes.add)[1])*1200/dim(kmeans.mac.genes.add)[1]),col=cols[mac.kmeans.genes.ord$stages], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+#dev.off()
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00",
+"grey")
+ha = rowAnnotation(stages = mac.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6], "7" = cols[7])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mac.cen.std[as.character(mac.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = hum.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(hum.cen.std[as.character(hum.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
 
 ##human Mou
 #Connector lines
@@ -1686,6 +1854,7 @@ for(i in c(1:6)){
 
 
 ```{r fig.width=4, fig.height=10}
+#tiff("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.hummau.hum.tiff", units="in", width=4, height=10, res=600)
 cols <- c("#fabc3c",
 "#a64dd4",
 "#14e072",
@@ -1704,11 +1873,12 @@ for(i in c(1:dim(kmeans.hum.mou.genes)[1])){
   y = 1000-y*1000/dim(mou.hvg.warped.kmeans.genes)[1]
   #print(x)
   #print(y)
-  segments(1,x,2,y,lwd = 0.1)
+  segments(1,y,2,x,lwd = 0.2,col="#616161")
 }
-points(data.frame(x=rep(1,dim(hum.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(hum.hvg.warped.kmeans.genes)[1])*1000/dim(hum.hvg.warped.kmeans.genes)[1]),col=cols[hum.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
-points(data.frame(x=rep(2,dim(mou.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mou.hvg.warped.kmeans.genes)[1])*1000/dim(mou.hvg.warped.kmeans.genes)[1]),col=cols[mou.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(hum.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(hum.hvg.warped.kmeans.genes)[1])*1000/dim(hum.hvg.warped.kmeans.genes)[1]),col=cols[hum.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
+points(data.frame(x=rep(1,dim(mou.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mou.hvg.warped.kmeans.genes)[1])*1000/dim(mou.hvg.warped.kmeans.genes)[1]),col=cols[mou.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
 #segments(1,0,10,0,col = "red")
+#dev.off()
 ```
 
 ```{r fig.width=4, fig.height=10}
@@ -1718,9 +1888,9 @@ cols <- c("#fabc3c",
 "#d9014a",
 "#abb4ff",
 "#b28e00")
-ha = rowAnnotation(stages = hum.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+ha = rowAnnotation(stages = hum.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
 #ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
-Heatmap(hum.cen.std[as.character(hum.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+Heatmap(hum.cen.std[as.character(hum.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
 ```
 
 ```{r fig.width=4, fig.height=10}
@@ -1730,9 +1900,9 @@ cols <- c("#fabc3c",
 "#d9014a",
 "#abb4ff",
 "#b28e00")
-ha = rowAnnotation(stages = mou.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+ha = rowAnnotation(stages = mou.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
 #ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
-Heatmap(mou.cen.std[as.character(mou.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+Heatmap(mou.cen.std[as.character(mou.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
 ```
 
 ##Monkey Mou
@@ -1794,7 +1964,7 @@ for(i in c(1:dim(kmeans.mac.mou.genes)[1])){
   y = 1000-y*1000/dim(mou.hvg.warped.kmeans.genes)[1]
   #print(x)
   #print(y)
-  segments(1,x,2,y,lwd = 0.1)
+  segments(1,x,2,y,lwd = 0.2,col="#616161")
 }
 points(data.frame(x=rep(1,dim(mac.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mac.hvg.warped.kmeans.genes)[1])*1000/dim(mac.hvg.warped.kmeans.genes)[1]),col=cols[mac.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
 points(data.frame(x=rep(2,dim(mou.hvg.warped.kmeans.genes)[1]),y=1000-c(1:dim(mou.hvg.warped.kmeans.genes)[1])*1000/dim(mou.hvg.warped.kmeans.genes)[1]),col=cols[mou.hvg.warped.kmeans.genes$stages], pch=15, cex=0.8)
@@ -1808,9 +1978,9 @@ cols <- c("#fabc3c",
 "#d9014a",
 "#abb4ff",
 "#b28e00")
-ha = rowAnnotation(stages = mou.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+ha = rowAnnotation(stages = mou.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
 #ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
-Heatmap(mou.cen.std[as.character(mou.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+Heatmap(mou.cen.std[as.character(mou.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
 ```
 
 
@@ -1821,9 +1991,9 @@ cols <- c("#fabc3c",
 "#d9014a",
 "#abb4ff",
 "#b28e00")
-ha = rowAnnotation(stages = mac.hvg.warped.kmeans.genes$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+ha = rowAnnotation(stages = mac.kmeans.genes.ord$stages, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
 #ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
-Heatmap(mac.cen.std[as.character(mac.hvg.warped.kmeans.genes$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+Heatmap(mac.cen.std[as.character(mac.kmeans.genes.ord$genes),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
 ```
 
 

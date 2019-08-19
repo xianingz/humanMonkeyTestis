@@ -612,17 +612,17 @@ spg.cca.mou <- SubsetData(object = spg.cca, cells.use = spg.cca@cell.names[spg.c
 
 ```{r}
 for(i in intersect(markers, humMacMouOrth.1to1.in$external_gene_name.x)){
-  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/hum_",i,".pdf"),width = 2.5, height = 2.5)
+  jpeg(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/spg.cca","_",i,".human.violin.jpeg"),height=850,width=800,res=300)
   p<-VlnPlot(object = spg.cca.hum, features.plot = i,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6),cols.use = cols)
   print(p)
   dev.off()
   
-  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/mac_",i,".pdf"),width = 2.5, height = 2.5)
+  jpeg(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/spg.cca","_",i,".monkey.violin.jpeg"),height=850,width=800,res=300)
   p<-VlnPlot(object = spg.cca.mac, features.plot = i,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6),cols.use = cols)
   print(p)
   dev.off()
   
-  pdf(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/mou_",i,".pdf"),width = 2.5, height = 2.5)
+  jpeg(paste0("/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/spg.cca","_",i,".mouse.violin.jpeg"),height=850,width=800,res=300)
   p<-VlnPlot(object = spg.cca.mou, features.plot = i,group.by = "res.0.6.ord",point.size.use=0, ident.include = c(1:6),cols.use = cols)
   print(p)
   dev.off()
@@ -818,3 +818,99 @@ pdf(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.mou.NumGeneUMI.
 do.call("grid.arrange", c(list(p1,p2), ncol=2))
 dev.off()
 ```
+
+```{r}
+plotgene_spe <- function(gene, cells.use=NULL){
+feature=features.plot=gene
+
+dim.1 = 1; dim.2 = 2; pt.size = 1;
+pch.use = 16; reduction.use = "tsne";
+use.imputed = FALSE; no.axes = TRUE; no.legend = FALSE
+
+cells.use <- set.ifnull(cells.use, spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dim.code <- translate.dim.code(reduction.use)
+dim.codes <- paste(dim.code, c(dim.1, dim.2), sep = "")
+data.plot <- as.data.frame(spg.cca@dr$tsne@cell.embeddings[cells.use,])
+
+x1 <- paste(dim.code, dim.1, sep = "")
+x2 <- paste(dim.code, dim.2, sep = "")
+
+data.plot$x <- data.plot[cells.use, x1]
+data.plot$y <- data.plot[cells.use, x2]
+data.plot$pt.size <- pt.size
+data.use <- data.frame(t(spg.cca@data[feature,cells.use]))
+rownames(data.use)=feature
+
+data.gene0 <- na.omit(data.frame(data.use[feature, ]))
+data.plot$gene <- t(data.gene0)
+
+st6<- data.plot
+st6<-st6[order(st6[,6]),]
+z<-st6[,6]
+
+#jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/newplots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
+par(mar=c(0.5,0.5,2,0.5),mgp=c(1,0.5,0))
+z<-st6[,6]
+zcolor <- redblue100.alpha[40:100][(z - min(z))/diff(range(z))*60 + 1]
+plot(st6[,1],st6[,2], col=zcolor,pch=19,cex=0.3,cex.main=1.5,axes=F,main=features.plot,xlab="",ylab="")
+#dev.off()
+}
+```
+
+
+```{r}
+plotgene_spe("TSPAN33", cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+```
+
+```{r fig.width=3, fig.height=2.5}
+df <- data.frame(expr = spg.cca.hum@data["TSPAN33",], ident = spg.cca.hum@meta.data$res.0.6.ord)
+df <- df[df$ident %in% c(1:6),]
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=2) + xlab("Identity") + ylab("") + ggtitle("TSPAN33") + theme(legend.position = "none")
+```
+
+```{r fig.width=3, fig.height=2.5}
+cols <- c("#477900",
+"#9378ff",
+"#01ce74",
+"#ff2b85",
+"#b0d266",
+"#733697",
+"#ff9c1d",
+"#0190c8",
+"#ffa19e")
+df <- data.frame(expr = spg.cca.mac@data["TSPAN33",], ident = spg.cca.mac@meta.data$res.0.6.ord)
+df <- df[df$ident %in% c(1:6),]
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=1) + xlab("Identity") + ylab("") + ggtitle("TSPAN33")  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
+```
+
+```{r}
+df <- data.frame(expr = spg.cca.mou@data["TSPAN33",], ident = spg.cca.mou@meta.data$res.0.6.ord)
+df <- df[df$ident %in% c(1:6),]
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=1/2) + xlab("Identity") + ylab("") + ggtitle("TSPAN33") + theme(legend.position = "none")
+```
+
+```{r}
+df <- data.frame(expr = spg.cca.mou@data["STRA8",], ident = spg.cca.mou@meta.data$res.0.6.ord)
+df <- df[df$ident %in% c(1:6),]
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width") + xlab("Identity") + ylab("") + ggtitle("STRA8") + theme(legend.position = "none")
+```
+
+```{r}
+for(i in markers){
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin_jitter/Mouse.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.mou, features.plot = i, ident.include = c(1:6), cols.use = cols, point.size.use = 0.05)
+print(p)
+dev.off()
+
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin_jitter/Human.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.hum, features.plot = i, ident.include = c(1:6), cols.use = cols, point.size.use = 0.05)
+print(p)
+dev.off()
+
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin_jitter/Monkey.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.mac, features.plot = i, ident.include = c(1:6), cols.use = cols, point.size.use = 0.05)
+print(p)
+dev.off()
+}
+```
+
