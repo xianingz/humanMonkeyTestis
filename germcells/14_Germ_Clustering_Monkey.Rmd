@@ -1,0 +1,73 @@
+Germ cell independent clustering for monkey
+
+```{r}
+dge.mac.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.full.raw.rds")
+dge.mac.germ.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.germ.raw.rds")
+```
+
+```{r}
+dge.mac.raw <- cbind(dge.mac.spg.raw[,!colnames(dge.mac.spg.raw) %in% colnames(dge.mac.germ.raw)], dge.mac.germ.raw)
+```
+
+
+```{r}
+dge.mac <- CreateSeuratObject(raw.data = dge.mac.raw)
+dge.mac <- NormalizeData(object = dge.mac, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+```
+
+```{r}
+dge.mac <- FindVariableGenes(object = dge.mac,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 1, x.high.cutoff = 3)
+batchs <- as.vector(sapply(colnames(dge.mac.raw),function(x) strsplit(x,'_')[[1]][1]))
+batchs[batchs %in% c("Monkey1", "Monkey2")] = "Monkey1"
+batchs[batchs %in% c("Monkey3")] = "Monkey2"
+batchs[batchs %in% c("Monkey4", "Monkey5")] = "Monkey3"
+batchs[batchs %in% c("Monkey6", "Monkey7")] = "Monkey4"
+batchs[batchs %in% c("Monkey8", "Monkey9")] = "Monkey5"
+dge.mac@meta.data$indi = batchs
+mac.spg <- dge.mac@cell.names %in% colnames(dge.mac.spg.raw)
+dge.mac@meta.data$spg <- mac.spg
+dge.mac <- ScaleData(object = dge.mac,vars.to.regress = c("nUMI"))
+dge.mac <- RunPCA(object = dge.mac, pc.genes = dge.mac@var.genes)
+dge.mac <- RunTSNE(object = dge.mac, dims.use = 1:15)
+dge.mac <- RunUMAP(object = dge.mac, dims.use = 1:15)
+```
+
+```{r fig.width=6,fig.height=4.5}
+PCAPlot(object = dge.mac, dim.1 = 1, dim.2 = 2)
+PCAPlot(object = dge.mac, dim.1 = 1, dim.2 = 2, group.by="indi")
+PCElbowPlot(object = dge.mac)
+```
+
+```{r fig.width=6,fig.height=4.5}
+TSNEPlot(object = dge.mac, group.by="indi")
+TSNEPlot(object = dge.mac)
+DimPlot(object = dge.mac, reduction.use = "umap", do.return = TRUE)
+DimPlot(object = dge.mac, reduction.use = "umap", do.return = TRUE, group.by="indi")
+```
+
+```{r}
+dge.mac <- FindClusters(object = dge.mac, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.3)
+```
+
+```{r fig.width=6, fig.height=4.5}
+dge.mac@meta.data$res.0.2.ord <- plyr::mapvalues(dge.mac@meta.data$res.0.2, c(5,4,6,2,3,1,0),c(1,2,3,4,5,6,7))
+TSNEPlot(object = dge.mac, do.return = TRUE, pt.size = 1, group.by = "res.0.2.ord")
+DimPlot(object = dge.mac, reduction.use = "umap", do.return = TRUE, group.by="res.0.2.ord")
+DimPlot(object = dge.mac, reduction.use = "pca", do.return = TRUE, group.by="res.0.2.ord")
+```
+
+
+```{r fig.width=10, fig.height=15}
+par(mfrow=c(6,4))
+for(i in markers[markers %in% rownames(dge.mac.raw)]){
+  plotgene(dge.mac,i)
+}
+```
+
+```{r fig.width=10, fig.height=15}
+VlnPlot(dge.mac, features.plot = markers[markers %in% rownames(dge.mac.raw)], nCol = 4, group.by = "res.0.2.ord", point.size.use = 0)
+```
+
+
+

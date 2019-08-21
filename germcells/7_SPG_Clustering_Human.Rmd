@@ -218,10 +218,38 @@ table(hum.spg.cca@meta.data$res.0.5.ord,hum.spg.cca@meta.data$res.0.6.ord)
 ###. Marker genes
 ```{r fig.width=10,fig.height=15}
 colfunc <- colorRampPalette(c("blue", "grey", "red"))
-spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","FGFR3","DMRT1","DMRTB1","SOLH2H","SYCP3","SYCP1","SPO11","MEIOB","ACRV1","CATSPER1","CATSPER3","PRM1","PRM2","TNP1","TNP2","ZCWPW1","STRA8","GFRA1","PRDM9","SSX2","SSX3")
+spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","MKI67","DMRT1","DMRTB1","SOLH2H","ZBTB16","SYCP2","SPO11","MEIOB","CATSPER1","CATSPER3","MEOB","PRM2","TXT101","TCF3","ZCWPW1","STRA8","GFRA1","PRDM9","CDK17","LY6K", "HORMAD1")
 spg.markers <- intersect(spg.markers, rownames(hum.spg.cca@raw.data))
 FeaturePlot(object = hum.spg.cca,features.plot = spg.markers,reduction.use = "umap",pt.size = 0.5,nCol = 4)
 VlnPlot(object = hum.spg.cca, features.plot = spg.markers, nCol = 4,group.by = "res.0.5.ord",point.size.use=0)
+```
+
+```{r}
+dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.5)
+dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.6)
+dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.7)
+dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.8)
+```
+
+```{r fig.width=6, fig.height=4.5}
+dge.hum.spg.full@meta.data$res.0.6.ord <- plyr::mapvalues(dge.hum.spg.full@meta.data$res.0.6, c(3,0,1,2,4),c(1,2,3,4,5))
+TSNEPlot(object = dge.hum.spg.full, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord")
+DimPlot(object = dge.hum.spg.full, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord")
+#table(dge.hum.spg.full@meta.data$res.0.6.ord, spg.cca@meta.data[hum.spg.cca@cell.names,]$res.0.6.ord)
+```
+
+```{r}
+table(dge.hum.spg.full@meta.data$res.0.6.ord, spg.cca@meta.data[dge.hum.spg.full@cell.names,]$res.0.6.ord)
+```
+
+
+###. Marker genes
+```{r fig.width=10,fig.height=13}
+colfunc <- colorRampPalette(c("blue", "grey", "red"))
+spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","GFRA1","CDK17","MKI67","DMRT1","DMRTB1","SOLH2H","ZBTB16","TCF3","ZCWPW1","STRA8", "L1TD1","UCHL1","TEX101","SYCP2","MEIOB","LY6K", "HORMAD1")
+spg.markers <- intersect(spg.markers, rownames(dge.hum.spg.full@raw.data))
+FeaturePlot(object = dge.hum.spg.full,features.plot = spg.markers,reduction.use = "tsne",pt.size = 0.5,nCol = 4)
+#VlnPlot(object = dge.hum.spg.full, features.plot = spg.markers, nCol = 4,group.by = "res.0.5",point.size.use=0)
 ```
 
 ###. Check the expression of STRA8

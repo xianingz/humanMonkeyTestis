@@ -1693,16 +1693,16 @@ mac.mean <- apply(mac.cen[hum.extra.genes$mmulatta_homolog_associated_gene_name,
 ```
 
 ```{r fig.width=5,fig.height=5}
-plot(log(mac.mean), mac.max.cor) + abline(v=-3) + abline(h=0.8)
+plot(log(mac.mean), mac.max.cor) + abline(h=0.8)
 ```
 
 
 ```{r}
-kmeans.mac.genes.add <- mac.hvg.warped.kmeans.genes
+kmeans.mac.genes.add <- data.frame()
 for(i in hum.extra.genes$mmulatta_homolog_associated_gene_name){
-  if(mac.max.cor[i] >= 0.8 & log(mac.mean[i])>-3){
+  if(mac.max.cor[i] >= 0.8){
     max.cor.gene <- names(which.max(max.extra.cor[,i]))
-    max.cor.stage <- kmeans.mac.genes.add$stages[kmeans.mac.genes.add$genes==max.cor.gene]
+    max.cor.stage <- mac.hvg.warped.kmeans.genes$stages[mac.hvg.warped.kmeans.genes$genes==max.cor.gene]
     kmeans.mac.genes.add <- rbind(kmeans.mac.genes.add, data.frame(genes=i, stages=max.cor.stage))
   }else{
     kmeans.mac.genes.add <- rbind(kmeans.mac.genes.add, data.frame(genes=i, stages=7))
@@ -1710,6 +1710,39 @@ for(i in hum.extra.genes$mmulatta_homolog_associated_gene_name){
 }
 kmeans.mac.genes.add <- kmeans.mac.genes.add[order(kmeans.mac.genes.add$stages),]
 ```
+
+```{r}
+kmeans.mac.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name %in% mac.hvgs,]
+
+mac.extra.genes <- kmeans.mac.genes[!kmeans.mac.genes$external_gene_name.x %in% hum.hvgs,]
+
+hum.extra.cor <- cor(t(hum.cen.std[hum.hvgs,]),t(hum.cen.std[mac.extra.genes$external_gene_name.x,]), method = "spearman")
+hum.max.cor <- apply(hum.extra.cor,2,max)
+hum.mean <- apply(hum.cen[mac.extra.genes$external_gene_name.x,],1,mean)
+```
+
+```{r fig.width=5,fig.height=5}
+plot(log(hum.mean), hum.max.cor) + abline(h=0.8)
+```
+
+```{r}
+kmeans.hum.genes.add <- data.frame()
+for(i in mac.extra.genes$external_gene_name.x){
+  if(hum.max.cor[i] >= 0.8){
+    max.cor.gene <- names(which.max(hum.extra.cor[,i]))
+    max.cor.stage <- hum.hvg.warped.kmeans.genes$stages[hum.hvg.warped.kmeans.genes$genes==max.cor.gene]
+    kmeans.hum.genes.add <- rbind(kmeans.hum.genes.add, data.frame(genes=i, stages=max.cor.stage))
+  }else{
+    kmeans.hum.genes.add <- rbind(kmeans.hum.genes.add, data.frame(genes=i, stages=7))
+  }
+}
+kmeans.hum.genes.add <- kmeans.hum.genes.add[order(kmeans.hum.genes.add$stages),]
+```
+
+```{r}
+germ.ortho.connect <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/GermOrthologConnection.txt", header = TRUE, sep = "\t")
+```
+
 
 ```{r}
 pos.hum.mac <- c()

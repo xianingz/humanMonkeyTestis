@@ -330,23 +330,26 @@ p
 ```
 
 Plot genes across the stages
-```{r fig.width=18, fig.height=15}
+
+
+```{r fig.width=8, fig.height=6}
 plts <- list()
-glist <- c("SYCP1","SYCP3","MLH1","MLH3","HORMAD1","ZCWPW1","ACRV1","PRM2","PGK2","HSPA1L")
+glist <- c("UCHL1","HORMAD1","ACRV1","PRM2")
 for(i in intersect(glist, humMacMouOrth.1to1.in$external_gene_name.x)){
-  df <- data.frame(hum=t(hum.germ.cen[i,]),mac=t(mac.germ.cen[i,]),mou=t(mou.germ.cen[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x==i],]))
+  df <- data.frame(hum=t(hum.26.cen.1ortho[i,]),mac=t(mac.26.cen.1ortho[i,]),mou=t(mou.26.cen.1ortho[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name[humMacMouOrth.1to1.in$external_gene_name.x==i],]))
   colnames(df) <- c("Human","Monkey","Mouse")
   df <- melt(df)
-  df$stages <- rep(c(1:20),3)
+  df$stages <- rep(c(1:26),3)
   p <- ggplot(data=df, aes(x=stages, y=value)) + 
   geom_point(aes(stages,value,color=variable, shape=variable)) + geom_smooth(aes(stages,value,group=variable,color=variable),se=FALSE)  + 
   ylab("Expression Level") +
-  xlab("Developmental Stages") +
+  xlab("Pseudotimes") +
   scale_shape_manual(values=c(19, 2,23)) +
   scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) +
-  ggtitle(i)
+  ggtitle(i) + 
+  geom_vline(xintercept = 6.5, linetype="dotted")
   plts[[i]] <- p
 }
-do.call("grid.arrange", c(plts, ncol=3))
+do.call("grid.arrange", c(plts, ncol=2))
 ```
 

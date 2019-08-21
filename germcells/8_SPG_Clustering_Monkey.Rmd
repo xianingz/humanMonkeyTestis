@@ -13,6 +13,11 @@ dge.mac.spg.full.raw <- dge.mac.raw[,spg.cca@cell.names[spg.cca@meta.data$specie
 saveRDS(dge.mac.spg.full.raw, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.full.raw.rds")
 ```
 
+```{r}
+dge.mac.spg.full.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.spg.full.raw.rds")
+```
+
+
 ###. Only keep cluster 1-6 in merged SPG analysis
 ```{r}
 dge.mac.spg.full.raw <- dge.mac.spg.full.raw[,spg.cca@cell.names[spg.cca@meta.data$species=="Monkey" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]]
@@ -33,6 +38,7 @@ batchs[batchs %in% c("Monkey6", "Monkey7")] = "Monkey4"
 batchs[batchs %in% c("Monkey8", "Monkey9")] = "Monkey5"
 dge.mac.spg.full@meta.data$indi = batchs
 dge.mac.spg.full <- ScaleData(object = dge.mac.spg.full,vars.to.regress = c("nUMI"))
+dge.mac.spg.full <- RunPCA(object = dge.mac.spg.full, pc.genes = dge.mac.spg.full@var.genes)
 dge.mac.spg.full <- RunTSNE(object = dge.mac.spg.full, pc.genes = dge.mac.spg.full@var.genes)
 dge.mac.spg.full <- RunUMAP(object = dge.mac.spg.full, pc.genes = dge.mac.spg.full@var.genes)
 ```
@@ -204,6 +210,32 @@ FeaturePlot(object = mac.spg.cca,features.plot = spg.markers,reduction.use = "um
 VlnPlot(object = mac.spg.cca, features.plot = spg.markers, nCol = 4,group.by = "res.0.5.ord",point.size.use=0)
 ```
 
-```{r}
 
+No correction
+```{r}
+dge.mac.spg.full <- FindClusters(object = dge.mac.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.5)
+dge.mac.spg.full <- FindClusters(object = dge.mac.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.6)
+dge.mac.spg.full <- FindClusters(object = dge.mac.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.7)
+dge.mac.spg.full <- FindClusters(object = dge.mac.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.8)
+```
+
+```{r fig.width=6, fig.height=4.5}
+#dge.mac.spg.full@meta.data$res.0.6.ord <- plyr::mapvalues(dge.mac.spg.full@meta.data$res.0.6, c(3,2,0,1,4),c(1,2,3,4,5))
+TSNEPlot(object = dge.mac.spg.full, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord")
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord")
+DimPlot(object = dge.mac.spg.full, reduction.use = "pca", do.return = TRUE, group.by="res.0.6.ord")
+```
+
+```{r}
+table(dge.mac.spg.full@meta.data$res.0.6.ord, spg.cca@meta.data[dge.mac.spg.full@cell.names,]$res.0.6.ord)
+```
+
+
+###. Marker genes
+```{r fig.width=10,fig.height=13}
+colfunc <- colorRampPalette(c("blue", "grey", "red"))
+spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","GFRA1","CDK17","MKI67","DMRT1","DMRTB1","SOLH2H","ZBTB16","TCF3","ZCWPW1","STRA8", "L1TD1","UCHL1","TEX101","SYCP2","MEIOB","LY6K", "HORMAD1")
+spg.markers <- intersect(spg.markers, rownames(dge.mac.spg.full@raw.data))
+FeaturePlot(object = dge.mac.spg.full,features.plot = spg.markers,reduction.use = "umap",pt.size = 0.5,nCol = 4)
+VlnPlot(object = dge.mac.spg.full, features.plot = spg.markers, nCol = 4,group.by = "res.0.6.ord",point.size.use=0)
 ```

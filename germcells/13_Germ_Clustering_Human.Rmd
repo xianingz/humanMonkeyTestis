@@ -1,0 +1,148 @@
+Germ cell independent clustering for human
+
+```{r}
+dge.hum.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.full.raw.rds")
+dge.hum.germ.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.germ.raw.rds")
+```
+
+```{r}
+dge.hum.raw <- cbind(dge.hum.spg.raw[,!colnames(dge.hum.spg.raw) %in% colnames(dge.hum.germ.raw)], dge.hum.germ.raw)
+```
+
+```{r}
+library(Seurat)
+```
+
+
+```{r}
+dge.hum <- CreateSeuratObject(raw.data = dge.hum.raw)
+dge.hum <- NormalizeData(object = dge.hum, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+```
+
+```{r}
+dge.hum <- FindVariableGenes(object = dge.hum,mean.function = ExpMean, dispersion.function = LogVMR, x.low.cutoff = 0.0125, y.cutoff = 1, x.high.cutoff = 3)
+batchs <- as.vector(sapply(colnames(dge.hum.raw),function(x) strsplit(x,'_')[[1]][1]))
+batchs[batchs %in% c("Human1", "Human2", "Human3", "Human4", "Human5")] = "Human1"
+batchs[batchs %in% c("Human6", "Human7")] = "Human2"
+batchs[batchs %in% c("Human8", "Human9")] = "Human3"
+batchs[batchs %in% c("Human11")] = "Human5"
+hum.spg <- dge.hum@cell.names %in% colnames(dge.hum.spg.raw)
+dge.hum@meta.data$spg <- hum.spg
+dge.hum@meta.data$indi = batchs
+dge.hum <- ScaleData(object = dge.hum,vars.to.regress = c("nUMI"))
+dge.hum <- RunPCA(object = dge.hum, pc.genes = dge.hum@var.genes)
+dge.hum <- RunTSNE(object = dge.hum, dims.use = 1:15)
+dge.hum <- RunUMAP(object = dge.hum, dims.use = 1:15)
+```
+
+
+```{r fig.width=6,fig.height=4.5}
+PCAPlot(object = dge.hum, dim.1 = 1, dim.2 = 2)
+PCAPlot(object = dge.hum, dim.1 = 1, dim.2 = 2, group.by="indi")
+PCAPlot(object = dge.hum, dim.1 = 1, dim.2 = 3)
+PCAPlot(object = dge.hum, dim.1 = 1, dim.2 = 3, group.by="indi")
+PCElbowPlot(object = dge.hum)
+```
+
+```{r fig.width=6,fig.height=4.5}
+TSNEPlot(object = dge.hum, group.by="indi")
+TSNEPlot(object = dge.hum)
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE)
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="indi")
+```
+
+```{r}
+FeaturePlot(dge.hum, features.plot = "TNP1", reduction.use = "umap")
+```
+
+```{r}
+dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.6)
+dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.8)
+```
+
+```{r fig.width=6, fig.height=4.5}
+dge.hum@meta.data$res.0.6.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.6, c(5,2,6,8,7,0,3,1,4),c(1,2,3,4,5,6,7,8,9))
+TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord")
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord")
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.6.ord")
+```
+
+
+```{r}
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="nonspg")
+```
+
+
+```{r}
+redblue100.alpha<-rgb(read.table("~/storage/HumanMacaqueMouseCompAnaysis/redblue100.txt",sep='\t',row.names=1,header=T),alpha=0.8)
+
+set.ifnull=function(x,y) {
+  if(is.null(x)) return(y)
+  return(x)
+}
+translate.dim.code=function(reduction.use) {
+  if (reduction.use=="pca") return.code="PC"
+  if (reduction.use=="ica") return.code="IC"
+  if (reduction.use=="tsne") return.code="tSNE_"
+  if (reduction.use=="mds") return.code="MDS"
+  if (reduction.use=="umap") return.code="UMAP"
+  return(return.code)
+}
+
+plotgene <- function(object, gene){
+feature=features.plot=gene
+
+dim.1 = 1; dim.2 = 2; cells.use = NULL; pt.size = 1;
+pch.use = 16; reduction.use = "umap";
+use.imputed = FALSE; no.axes = TRUE; no.legend = FALSE
+
+cells.use <- set.ifnull(cells.use, object@cell.names)
+dim.code <- translate.dim.code(reduction.use)
+dim.codes <- paste(dim.code, c(dim.1, dim.2), sep = "")
+data.plot <- as.data.frame(object@dr$umap@cell.embeddings[cells.use,])
+
+x1 <- paste(dim.code, dim.1, sep = "")
+x2 <- paste(dim.code, dim.2, sep = "")
+
+data.plot$x <- data.plot[cells.use, x1]
+data.plot$y <- data.plot[cells.use, x2]
+data.plot$pt.size <- pt.size
+data.use <- data.frame(t(object@data[feature,cells.use]))
+rownames(data.use)=feature
+
+data.gene0 <- na.omit(data.frame(data.use[feature, ]))
+data.plot$gene <- t(data.gene0)
+
+st6<- data.plot
+st6<-st6[order(st6[,6]),]
+z<-st6[,6]
+
+#jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/newplots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
+par(mar=c(0.5,0.5,2,0.5),mgp=c(1,0.5,0))
+z<-st6[,6]
+zcolor <- redblue100.alpha[40:100][(z - min(z))/diff(range(z))*60 + 1]
+plot(st6[,1],st6[,2], col=zcolor,pch=19,cex=0.3,cex.main=1.5,axes=F,main=features.plot,xlab="",ylab="")
+#dev.off()
+}
+```
+```{r}
+markers <- c("SALL4","ZBTB16","MORC1","DMRT1","UCHL1","SOHLH1","STRA8","GFRA1","TSPAN33","ID4","TBPL1","ZCWPW1","MEIOB","SYCP1","PRDM9","TEX101","PIWIL1","SPO11","MEI1","PIWIL2","SPAG6","SYCP3","HORMAD1","ACRV1","PRM2","HSPA1L","TNP1","CATSPER3")
+```
+
+```{r fig.width=10, fig.height=10}
+FeaturePlot(dge.hum, features.plot = markers, reduction.use = "umap",nCol = 4,pch.use = 0.1)
+```
+
+```{r fig.width=10, fig.height=18}
+par(mfrow=c(7,4))
+for(i in markers){
+  plotgene(dge.hum,i)
+}
+```
+
+
+```{r fig.width=10, fig.height=18}
+VlnPlot(dge.hum, features.plot = markers, nCol = 4, group.by = "res.0.6.ord", point.size.use = 0)
+```
+
