@@ -13,6 +13,11 @@ dge.hum.spg.full.raw <- dge.hum.raw[,spg.cca@cell.names[spg.cca@meta.data$specie
 saveRDS(dge.hum.spg.full.raw, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.full.raw.rds")
 ```
 
+```{r}
+dge.hum.spg.full.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.full.raw.rds")
+spg.cca <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
+```
+
 ###. Only keep cluster 1-6 in merged SPG analysis
 ```{r}
 dge.hum.spg.full.raw <- dge.hum.spg.full.raw[,spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]]
@@ -70,173 +75,21 @@ DimPlot(object = dge.hum.spg.full, reduction.use = "umap", do.return = TRUE, cel
 DimPlot(object = dge.hum.spg.full, reduction.use = "umap", do.return = TRUE, cells.use = dge.hum.spg.full@cell.names[dge.hum.spg.full@meta.data$indi=="Human3"])
 ```
 
-## CCA
 ```{r}
-batchs <- as.vector(sapply(colnames(dge.hum.spg.full.raw),function(x) strsplit(x,'_')[[1]][1]))
-dge.hum.spg.1 <- CreateSeuratObject(raw.data = dge.hum.spg.full.raw[,batchs %in% c("Human1", "Human2", "Human3", "Human4", "Human5")])
-dge.hum.spg.1 <- NormalizeData(object = dge.hum.spg.1)
-dge.hum.spg.1 <- ScaleData(object = dge.hum.spg.1)
-dge.hum.spg.1 <- FindVariableGenes(object = dge.hum.spg.1, do.plot = FALSE)
-
-dge.hum.spg.2 <- CreateSeuratObject(raw.data = dge.hum.spg.full.raw[,batchs %in% c("Human6", "Human7")])
-dge.hum.spg.2 <- NormalizeData(object = dge.hum.spg.2)
-dge.hum.spg.2 <- ScaleData(object = dge.hum.spg.2)
-dge.hum.spg.2 <- FindVariableGenes(object = dge.hum.spg.2, do.plot = FALSE)
-
-dge.hum.spg.3 <- CreateSeuratObject(raw.data = dge.hum.spg.full.raw[,batchs %in% c("Human8", "Human9")])
-dge.hum.spg.3 <- NormalizeData(object = dge.hum.spg.3)
-dge.hum.spg.3 <- ScaleData(object = dge.hum.spg.3)
-dge.hum.spg.3 <- FindVariableGenes(object = dge.hum.spg.3, do.plot = FALSE)
-```
-
-```{r}
-hvg.hum.spg.1 <- rownames(x = head(x = dge.hum.spg.1@hvg.info, n = 1000))
-hvg.hum.spg.2 <- rownames(x = head(x = dge.hum.spg.2@hvg.info, n = 1000))
-hvg.hum.spg.3 <- rownames(x = head(x = dge.hum.spg.3@hvg.info, n = 1000))
-hvg.union <- union(x = hvg.hum.spg.1, y = hvg.hum.spg.2)
-hvg.union <- union(x = hvg.union, y = hvg.hum.spg.3)
-```
-
-```{r}
-dge.hum.spg.1@meta.data[,"indi"] <- "Human1"
-dge.hum.spg.2@meta.data[,"indi"] <- "Human2"
-dge.hum.spg.3@meta.data[,"indi"] <- "Human3"
-```
-
-```{r}
-hum.spg.cca <- RunMultiCCA(object.list = list(dge.hum.spg.1, dge.hum.spg.2, dge.hum.spg.3),genes.use = hvg.union, num.ccs = 20)
-```
-
-```{r}
-MetageneBicorPlot(hum.spg.cca, grouping.var = "indi", dims.eval = 1:20, display.progress = TRUE)
-```
-
-
-```{r}
-hum.spg.cca <- AlignSubspace(object = hum.spg.cca, reduction.type = "cca", grouping.var = "indi", dims.align = 1:15)
-hum.spg.cca <- RunTSNE(object = hum.spg.cca, reduction.use = "cca.aligned", dims.use = 1:15)
-hum.spg.cca <- RunUMAP(object = hum.spg.cca, reduction.use = "cca.aligned", dims.use = 1:15)
-```
-
-
-```{r fig.width=6, fig.height=4.5}
-TSNEPlot(object = hum.spg.cca, do.return = TRUE, pt.size = 1, group.by = "indi")
-DimPlot(object = hum.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="indi")
-DimPlot(object = hum.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="indi")
-```
-```{r}
-hum.spg.cca <- FindClusters(object = hum.spg.cca, reduction.type = "cca.aligned", dims.use = 1:15, save.SNN = TRUE, resolution = 0.5)
-hum.spg.cca <- FindClusters(object = hum.spg.cca, reduction.type = "cca.aligned", dims.use = 1:15, save.SNN = TRUE, resolution = 0.6)
-hum.spg.cca <- FindClusters(object = hum.spg.cca, reduction.type = "cca.aligned", dims.use = 1:15, save.SNN = TRUE, resolution = 0.7)
-hum.spg.cca <- FindClusters(object = hum.spg.cca, reduction.type = "cca.aligned", dims.use = 1:15, save.SNN = TRUE, resolution = 0.8)
-```
-
-```{r fig.width=6, fig.height=4.5}
-TSNEPlot(object = hum.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.5")
-DimPlot(object = hum.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.5")
-DimPlot(object = hum.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.5")
-```
-
-
-```{r fig.width=6, fig.height=4.5}
-TSNEPlot(object = hum.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.6")
-DimPlot(object = hum.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.6")
-DimPlot(object = hum.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.6")
-```
-
-```{r fig.width=6, fig.height=4.5}
-TSNEPlot(object = hum.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.7")
-DimPlot(object = hum.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.7")
-DimPlot(object = hum.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.7")
-```
-
-```{r fig.width=6, fig.height=4.5}
-TSNEPlot(object = hum.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.8")
-DimPlot(object = hum.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.8")
-DimPlot(object = hum.spg.cca, reduction.use = "cca.aligned", do.return = TRUE, group.by="res.0.8")
-```
-
-
-
-###. Corss with Merged SPG 6 clusters
-####. 1. res = 0.5
-```{r fig.width=6, fig.height=4.5}
-hum.spg.cca@meta.data$res.0.5.ord <- plyr::mapvalues(hum.spg.cca@meta.data$res.0.5, c(1,0,2,3),c(1,2,3,4))
-TSNEPlot(object = hum.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.5.ord")
-DimPlot(object = hum.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.5.ord")
-table(hum.spg.cca@meta.data$res.0.5.ord, spg.cca@meta.data[hum.spg.cca@cell.names,]$res.0.6.ord)
-```
-Cluster centroid for SPG
-```{r}
-hum.spg.cen.0.5 <- c()
-clus <- unique(hum.spg.cca@meta.data$res.0.5.ord)
-for(i in clus){
-  cen <- apply(hum.spg.cca@data[,hum.spg.cca@meta.data$res.0.5.ord == i], 1, mean)
-  hum.spg.cen.0.5 <- cbind(hum.spg.cen.0.5, cen)
-}
-colnames(hum.spg.cen.0.5) <- clus
-```
-
-```{r fig.width=4.9,fig.height=4.5}
-hum.spg.cor.0.5 <- cor(hum.spg.cen.0.5, method="spearman")
-a = seriate(hum.spg.cor.0.5,method="BEA_TSP")
-ord = get_order(a)
-Heatmap(hum.spg.cor.0.5[ord,ord], cluster_rows = FALSE, cluster_columns = FALSE)
-```
-
-
-####. 1. res = 0.6
-```{r fig.width=6, fig.height=4.5}
-hum.spg.cca@meta.data$res.0.6.ord <- plyr::mapvalues(hum.spg.cca@meta.data$res.0.6, c(1,0,4,2,3),c(1,2,3,4,5))
-TSNEPlot(object = hum.spg.cca, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord")
-DimPlot(object = hum.spg.cca, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord")
-table(hum.spg.cca@meta.data$res.0.6.ord, spg.cca@meta.data[hum.spg.cca@cell.names,]$res.0.6.ord)
-```
-
-Cluster centroid for SPG
-```{r}
-hum.spg.cen.0.6 <- c()
-clus <- unique(hum.spg.cca@meta.data$res.0.6.ord)
-for(i in clus){
-  cen <- apply(hum.spg.cca@data[,hum.spg.cca@meta.data$res.0.6.ord == i], 1, mean)
-  hum.spg.cen.0.6 <- cbind(hum.spg.cen.0.6, cen)
-}
-colnames(hum.spg.cen.0.6) <- clus
-```
-
-```{r fig.width=4.9,fig.height=4.5}
-hum.spg.cor.0.6 <- cor(hum.spg.cen.0.6, method="spearman")
-a = seriate(hum.spg.cor.0.6,method="BEA_TSP")
-ord = get_order(a)
-Heatmap(hum.spg.cor.0.6[ord,ord], cluster_rows = FALSE, cluster_columns = FALSE)
-```
-
-cross of resolution 0.5 and 0.6
-```{r}
-table(hum.spg.cca@meta.data$res.0.5.ord,hum.spg.cca@meta.data$res.0.6.ord)
-```
-###. Marker genes
-```{r fig.width=10,fig.height=15}
-colfunc <- colorRampPalette(c("blue", "grey", "red"))
-spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","MKI67","DMRT1","DMRTB1","SOLH2H","ZBTB16","SYCP2","SPO11","MEIOB","CATSPER1","CATSPER3","MEOB","PRM2","TXT101","TCF3","ZCWPW1","STRA8","GFRA1","PRDM9","CDK17","LY6K", "HORMAD1")
-spg.markers <- intersect(spg.markers, rownames(hum.spg.cca@raw.data))
-FeaturePlot(object = hum.spg.cca,features.plot = spg.markers,reduction.use = "umap",pt.size = 0.5,nCol = 4)
-VlnPlot(object = hum.spg.cca, features.plot = spg.markers, nCol = 4,group.by = "res.0.5.ord",point.size.use=0)
-```
-
-```{r}
-dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.5)
 dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.6)
-dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.7)
-dge.hum.spg.full <- FindClusters(object = dge.hum.spg.full, reduction.type = "pca", dims.use = 1:20, save.SNN = TRUE, resolution = 0.8)
 ```
 
 ```{r fig.width=6, fig.height=4.5}
 dge.hum.spg.full@meta.data$res.0.6.ord <- plyr::mapvalues(dge.hum.spg.full@meta.data$res.0.6, c(3,0,1,2,4),c(1,2,3,4,5))
 TSNEPlot(object = dge.hum.spg.full, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord")
 DimPlot(object = dge.hum.spg.full, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord")
+DimPlot(object = dge.hum.spg.full, reduction.use = "pca", do.return = TRUE, group.by="res.0.6.ord")
 #table(dge.hum.spg.full@meta.data$res.0.6.ord, spg.cca@meta.data[hum.spg.cca@cell.names,]$res.0.6.ord)
 ```
+
+
+
+
 
 ```{r}
 table(dge.hum.spg.full@meta.data$res.0.6.ord, spg.cca@meta.data[dge.hum.spg.full@cell.names,]$res.0.6.ord)
@@ -244,22 +97,50 @@ table(dge.hum.spg.full@meta.data$res.0.6.ord, spg.cca@meta.data[dge.hum.spg.full
 
 
 ###. Marker genes
-```{r fig.width=10,fig.height=13}
+```{r fig.width=8,fig.height=10}
 colfunc <- colorRampPalette(c("blue", "grey", "red"))
 spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","GFRA1","CDK17","MKI67","DMRT1","DMRTB1","SOLH2H","ZBTB16","TCF3","ZCWPW1","STRA8", "L1TD1","UCHL1","TEX101","SYCP2","MEIOB","LY6K", "HORMAD1")
 spg.markers <- intersect(spg.markers, rownames(dge.hum.spg.full@raw.data))
-FeaturePlot(object = dge.hum.spg.full,features.plot = spg.markers,reduction.use = "tsne",pt.size = 0.5,nCol = 4)
-#VlnPlot(object = dge.hum.spg.full, features.plot = spg.markers, nCol = 4,group.by = "res.0.5",point.size.use=0)
+par(mfrow=c(5,4))
+for(i in spg.markers){
+  plotgene(dge.hum.spg.full, i, reduction.use = "tsne")
+}
+for(i in spg.markers){
+  plotgene(dge.hum.spg.full, i, reduction.use = "umap")
+}
+#FeaturePlot(object = dge.hum.spg.full,features.plot = spg.markers,reduction.use = "tsne",pt.size = 0.5,nCol = 4)
+VlnPlot(object = dge.hum.spg.full, features.plot = spg.markers, nCol = 4,group.by = "res.0.6.ord",point.size.use=0)
 ```
 
-###. Check the expression of STRA8
-```{r fig.width=4,fig.height=4}
-FeaturePlot(object = spg.cca,features.plot = c("STRA8"),reduction.use = "tsne",pt.size = 0.5, cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Mouse"])
-FeaturePlot(object = spg.cca,features.plot = c("STRA8"),reduction.use = "tsne",pt.size = 0.5, cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Human"])
-FeaturePlot(object = spg.cca,features.plot = c("STRA8"),reduction.use = "tsne",pt.size = 0.5, cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Monkey"])
+###. Call Markers
+
+```{r}
+dge.hum.spg.full <- SetIdent(dge.hum.spg.full, ident.use = dge.hum.spg.full@meta.data$res.0.6.ord)
 ```
 
 ```{r}
-saveRDS(hum.spg.cca, file="~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.spg.cca.rds")
+hum.spg.markers <- list()
+for(i in c(1:5)){
+  tmp <- FindMarkers(dge.hum.spg.full, ident.1 = i, min.pct = 0.2, logfc.threshold = 0.7,only.pos = TRUE)
+  tmp <- tmp[tmp$p_val_adj < 0.01, ]
+  hum.spg.markers[[i]] <- tmp
+}
 ```
+
+```{r}
+library(xlsx)
+```
+
+
+```{r}
+for(i in c(1:5)){
+if(i==1){
+  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/Hum_SPG_5Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = hum.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/Hum_SPG_5Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
+```
+
+
 
