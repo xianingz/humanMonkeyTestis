@@ -188,7 +188,6 @@ dev.off()
 spg.cca <- SetIdent(spg.cca, ident.use = spg.cca@meta.data$res.0.6.ord)
 ```
 
-
 ##. Find Markers
 ###. Conserved markers
 ```{r}

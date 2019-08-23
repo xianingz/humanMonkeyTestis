@@ -57,6 +57,17 @@ DimPlot(object = dge.mac, reduction.use = "umap", do.return = TRUE, group.by="re
 DimPlot(object = dge.mac, reduction.use = "pca", do.return = TRUE, group.by="res.0.2.ord")
 ```
 
+```{r}
+dge.mac <- FindClusters(object = dge.mac, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.3)
+```
+
+```{r fig.width=6, fig.height=4.5}
+dge.mac@meta.data$res.0.3.ord <- plyr::mapvalues(dge.mac@meta.data$res.0.3, c(6,5,7,2,4,1,8,3,0),c(1,2,3,4,5,6,7,8,9))
+TSNEPlot(object = dge.mac, do.return = TRUE, pt.size = 1, group.by = "res.0.3.ord")
+DimPlot(object = dge.mac, reduction.use = "umap", do.return = TRUE, group.by="res.0.3.ord")
+DimPlot(object = dge.mac, reduction.use = "pca", do.return = TRUE, group.by="res.0.3.ord")
+```
+
 
 ```{r fig.width=10, fig.height=15}
 par(mfrow=c(6,4))

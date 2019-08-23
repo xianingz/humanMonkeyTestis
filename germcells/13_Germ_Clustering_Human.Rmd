@@ -58,6 +58,7 @@ FeaturePlot(dge.hum, features.plot = "TNP1", reduction.use = "umap")
 
 ```{r}
 dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.6)
+dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.7)
 dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.8)
 ```
 
@@ -68,6 +69,19 @@ DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="re
 DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.6.ord")
 ```
 
+```{r fig.width=6, fig.height=4.5}
+#dge.hum@meta.data$res.0.6.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.6, c(5,2,6,8,7,0,3,1,4),c(1,2,3,4,5,6,7,8,9))
+TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.7")
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.7")
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.7")
+```
+
+```{r fig.width=6, fig.height=4.5}
+dge.hum@meta.data$res.0.8.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.8, c(10,9,1,6,11,8,7,0,2,5,4,3),c(1,2,3,4,5,6,7,8,9,10,11,12))
+TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.8.ord")
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.8.ord")
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.8.ord")
+```
 
 ```{r}
 DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="nonspg")
@@ -90,17 +104,23 @@ translate.dim.code=function(reduction.use) {
   return(return.code)
 }
 
-plotgene <- function(object, gene){
+plotgene <- function(object, gene, reduction.use="umap"){
 feature=features.plot=gene
 
 dim.1 = 1; dim.2 = 2; cells.use = NULL; pt.size = 1;
-pch.use = 16; reduction.use = "umap";
+pch.use = 16;
 use.imputed = FALSE; no.axes = TRUE; no.legend = FALSE
 
 cells.use <- set.ifnull(cells.use, object@cell.names)
 dim.code <- translate.dim.code(reduction.use)
 dim.codes <- paste(dim.code, c(dim.1, dim.2), sep = "")
-data.plot <- as.data.frame(object@dr$umap@cell.embeddings[cells.use,])
+if(reduction.use=="umap"){
+  data.plot <- as.data.frame(object@dr$umap@cell.embeddings[cells.use,])
+}else if(reduction.use=="tsne"){
+  data.plot <- as.data.frame(object@dr$tsne@cell.embeddings[cells.use,])
+}else if(reduction.use=="pca"){
+  data.plot <- as.data.frame(object@dr$pca@cell.embeddings[cells.use,])
+}
 
 x1 <- paste(dim.code, dim.1, sep = "")
 x2 <- paste(dim.code, dim.2, sep = "")
