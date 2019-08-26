@@ -52,6 +52,14 @@ DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE)
 DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="indi")
 ```
 
+```{r fig.width=6,fig.height=4.5}
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="indi",cells.highlight = dge.hum@cell.names[dge.hum@meta.data$indi=="Human1"])
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="indi",cells.highlight = dge.hum@cell.names[dge.hum@meta.data$indi=="Human2"])
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="indi",cells.highlight = dge.hum@cell.names[dge.hum@meta.data$indi=="Human3"])
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="indi",cells.highlight = dge.hum@cell.names[dge.hum@meta.data$indi=="Human5"])
+```
+
+
 ```{r}
 FeaturePlot(dge.hum, features.plot = "TNP1", reduction.use = "umap")
 ```
@@ -62,31 +70,89 @@ dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:1
 dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.8)
 ```
 
+```{r}
+cols <- c(
+  "#5adce3",
+  "#e3a65a",
+  "#e35a97",
+  "#5a97e3",
+  "#5ae3a6",
+  "#625ae3",
+  "#e3625a",
+  "#97e35a",
+  "#9d9ea0",
+  "#1d5caa",
+  "#dce35a",
+  "#2f737c")
+```
+
+
+
 ```{r fig.width=6, fig.height=4.5}
 dge.hum@meta.data$res.0.6.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.6, c(5,2,6,8,7,0,3,1,4),c(1,2,3,4,5,6,7,8,9))
-TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord")
-DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord")
-DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.6.ord")
+TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.6.ord", colors.use = cols[1:9])
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord", cols.use = cols[1:9])
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.6.ord", cols.use = cols[1:9])
 ```
 
 ```{r fig.width=6, fig.height=4.5}
-#dge.hum@meta.data$res.0.6.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.6, c(5,2,6,8,7,0,3,1,4),c(1,2,3,4,5,6,7,8,9))
-TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.7")
-DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.7")
-DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.7")
+dge.hum@meta.data$res.0.8.ord.15pc <- plyr::mapvalues(dge.hum@meta.data$res.0.8, c(10,9,1,6,11,8,7,0,2,5,4,3),c(1,2,3,4,5,6,7,8,9,10,11,12))
+TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.8.ord.15pc", colors.use = cols)
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.8.ord.15pc", cols.use = cols)
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.8.ord.15pc", cols.use = cols)
 ```
 
-```{r fig.width=6, fig.height=4.5}
-dge.hum@meta.data$res.0.8.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.8, c(10,9,1,6,11,8,7,0,2,5,4,3),c(1,2,3,4,5,6,7,8,9,10,11,12))
-TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.8.ord")
-DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.8.ord")
-DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.8.ord")
+
+## Cluster centroid and Self-self rank correlation
+```{r}
+dge.hum.9.cen <- matrix(0, nrow = dim(dge.hum@data)[1], ncol = 9)
+for(i in c(1:9)){
+  hum.i.cells <- dge.hum@cell.names[dge.hum@meta.data$res.0.6.ord==i]
+  hum.i.pro <- apply(exp(dge.hum@data[,hum.i.cells])-1,1,mean)
+  dge.hum.9.cen[,i] <- log(hum.i.pro+1)
+}
+dge.hum.9.cen.cor <- cor(dge.hum.9.cen, method = "spearman")
+rownames(dge.hum.9.cen.cor) <- c(1:9)
+colnames(dge.hum.9.cen.cor) <- c(1:9)
 ```
 
 ```{r}
-DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="nonspg")
+library(ComplexHeatmap)
 ```
 
+```{r fig.width=5, fig.height=4}
+Heatmap(dge.hum.9.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+
+```{r fig.width=6, fig.height=4.5}
+dge.hum@meta.data$res.0.8.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.8, c(10,9,2,4,8,6,0,5,1,7,3),c(1,2,3,4,5,6,7,8,9,10,11))
+dge.hum@meta.data$res.0.8.ord.5pca <- dge.hum@meta.data$res.0.8.ord
+TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.8.ord", colors.use = cols[1:11])
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.8.ord", cols.use = cols[1:11])
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.8.ord", cols.use = cols[1:11])
+```
+
+```{r fig.width=6, fig.height=4.5}
+#dge.hum@meta.data$res.0.8.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.8, c(10,9,1,6,11,8,7,0,2,5,4,3),c(1,2,3,4,5,6,7,8,9,10,11,12))
+  TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.9")
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.9")
+DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.9")
+```
+
+```{r fig.width=5, fig.height=4}
+dge.hum.11.cen <- matrix(0, nrow = dim(dge.hum@data)[1], ncol = 11)
+for(i in c(1:11)){
+  hum.i.cells <- dge.hum@cell.names[dge.hum@meta.data$res.0.8.ord==i]
+  hum.i.pro <- apply(exp(dge.hum@data[,hum.i.cells])-1,1,mean)
+  dge.hum.11.cen[,i] <- log(hum.i.pro+1)
+}
+dge.hum.11.cen.cor <- cor(dge.hum.11.cen, method = "spearman")
+rownames(dge.hum.11.cen.cor) <- c(1:11)
+colnames(dge.hum.11.cen.cor) <- c(1:11)
+
+Heatmap(dge.hum.11.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
 
 ```{r}
 redblue100.alpha<-rgb(read.table("~/storage/HumanMacaqueMouseCompAnaysis/redblue100.txt",sep='\t',row.names=1,header=T),alpha=0.8)
@@ -161,8 +227,50 @@ for(i in markers){
 }
 ```
 
+```{r fig.width=10, fig.height=6}
+par(mfrow=c(2,3))
+marker2 <- c("BEND2", "DMRT1","HORMAD1","PIWIL1", "ACRV1","PRM2")
+for(i in marker2){
+plotgene(dge.hum,i)
+}
+```
+
 
 ```{r fig.width=10, fig.height=18}
 VlnPlot(dge.hum, features.plot = markers, nCol = 4, group.by = "res.0.6.ord", point.size.use = 0)
+```
+
+```{r}
+saveRDS(dge.hum, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.germ.seurat.rds")
+```
+
+###. Call Markers
+
+```{r}
+dge.hum <- SetIdent(dge.hum, ident.use = dge.hum@meta.data$res.0.6.ord)
+```
+
+```{r}
+hum.markers <- list()
+for(i in c(1:9)){
+  tmp <- FindMarkers(dge.hum, ident.1 = i, min.pct = 0.2, logfc.threshold = 0.7,only.pos = TRUE)
+  tmp <- tmp[tmp$p_val_adj < 0.01, ]
+  hum.markers[[i]] <- tmp
+}
+```
+
+```{r}
+library(xlsx)
+```
+
+
+```{r}
+for(i in c(1:9)){
+if(i==1){
+  write.xlsx2(x = hum.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_Clusters/Hum_Germ_9Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = hum.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_Clusters/Hum_Germ_9Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
 ```
 

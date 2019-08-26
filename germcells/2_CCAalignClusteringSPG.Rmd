@@ -847,24 +847,34 @@ st6<- data.plot
 st6<-st6[order(st6[,6]),]
 z<-st6[,6]
 
-#jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/newplots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/newplots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
 par(mar=c(0.5,0.5,2,0.5),mgp=c(1,0.5,0))
 z<-st6[,6]
 zcolor <- redblue100.alpha[40:100][(z - min(z))/diff(range(z))*60 + 1]
 plot(st6[,1],st6[,2], col=zcolor,pch=19,cex=0.3,cex.main=1.5,axes=F,main=features.plot,xlab="",ylab="")
-#dev.off()
+dev.off()
 }
 ```
 
 
 ```{r}
-plotgene_spe("TSPAN33", cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+plotgene_spe("NANOS3", cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Mouse" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
 ```
 
+
 ```{r fig.width=3, fig.height=2.5}
-df <- data.frame(expr = spg.cca.hum@data["TSPAN33",], ident = spg.cca.hum@meta.data$res.0.6.ord)
+cols <- c("#477900",
+"#9378ff",
+"#01ce74",
+"#ff2b85",
+"#b0d266",
+"#733697",
+"#ff9c1d",
+"#0190c8",
+"#ffa19e")
+df <- data.frame(expr = spg.cca.hum@data["NANOS3",], ident = spg.cca.hum@meta.data$res.0.6.ord)
 df <- df[df$ident %in% c(1:6),]
-ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=2) + xlab("Identity") + ylab("") + ggtitle("TSPAN33") + theme(legend.position = "none")
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=2) + ylab("") + ggtitle("NANOS3")  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
 ```
 
 ```{r fig.width=3, fig.height=2.5}
@@ -877,15 +887,25 @@ cols <- c("#477900",
 "#ff9c1d",
 "#0190c8",
 "#ffa19e")
-df <- data.frame(expr = spg.cca.mac@data["TSPAN33",], ident = spg.cca.mac@meta.data$res.0.6.ord)
+df <- data.frame(expr = spg.cca.mac@data["NANOS3",], ident = spg.cca.mac@meta.data$res.0.6.ord)
 df <- df[df$ident %in% c(1:6),]
-ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=1) + xlab("Identity") + ylab("") + ggtitle("TSPAN33")  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=2) + xlab("Identity") + ylab("") + ggtitle("NANOS3")  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
 ```
 
-```{r}
-df <- data.frame(expr = spg.cca.mou@data["TSPAN33",], ident = spg.cca.mou@meta.data$res.0.6.ord)
+
+```{r fig.width=3, fig.height=2.5}
+cols <- c("#477900",
+"#9378ff",
+"#01ce74",
+"#ff2b85",
+"#b0d266",
+"#733697",
+"#ff9c1d",
+"#0190c8",
+"#ffa19e")
+df <- data.frame(expr = spg.cca.mou@data["NANOS3",], ident = spg.cca.mou@meta.data$res.0.6.ord)
 df <- df[df$ident %in% c(1:6),]
-ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=1/2) + xlab("Identity") + ylab("") + ggtitle("TSPAN33") + theme(legend.position = "none")
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=2) + xlab("Identity") + ylab("") + ggtitle("NANOS3")  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
 ```
 
 ```{r}
@@ -913,3 +933,101 @@ dev.off()
 }
 ```
 
+```{r fig.width=3, fig.height=2.5}
+vlnplot_gg <- function(object, gene, adjust=1){
+cols <- c("#477900",
+"#9378ff",
+"#01ce74",
+"#ff2b85",
+"#b0d266",
+"#733697",
+"#ff9c1d",
+"#0190c8",
+"#ffa19e")
+df <- data.frame(expr = object@data[gene,], ident = object@meta.data$res.0.6.ord)
+df <- df[df$ident %in% c(1:6),]
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=adjust) + ylab("") + xlab("") + ggtitle(gene)  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
+}
+```
+
+```{r}
+markers <- c("TSPAN33")
+markers <- c("NANOS3")
+for(i in markers){
+  jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Human.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- vlnplot_gg(spg.cca.hum, i, adjust = 2)
+print(p)
+dev.off()
+
+  jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Monkey.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- vlnplot_gg(spg.cca.mac, i, adjust = 2)
+print(p)
+dev.off()
+
+  jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Mouse.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- vlnplot_gg(spg.cca.mou, i, adjust = 2)
+print(p)
+dev.off()
+}
+```
+
+
+```{r}
+markers <- c("GFRA1","ZBTB16","LIN28A","ID4","ITGA6","UCHL1","STRA8","MKI67","DMRT1","SYCP2","HORMAD1","MEIOB","LY6K","TEX101","PIWIL4","MORC1","TCF3","CDK17","FMR1","L1TD1")
+for(i in markers){
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Mouse.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.mou, features.plot = i, ident.include = c(1:6), cols.use = cols, point.size.use = 0, size.x.use = 0)
+print(p)
+dev.off()
+
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Human.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.hum, features.plot = i, ident.include = c(1:6), cols.use = cols, point.size.use = 0, size.x.use = 0)
+print(p)
+dev.off()
+
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Monkey.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.mac, features.plot = i, ident.include = c(1:6), cols.use = cols, point.size.use = 0, size.x.use = 0)
+print(p)
+dev.off()
+}
+```
+
+Add KIT for humand and mouse
+```{r}
+spg.cca.hum@meta.data$KIT <- 0
+spg.cca.hum@meta.data[colnames(dge.hum.spg.full@data),]$KIT <- dge.hum.spg.full@data["KIT",]
+```
+
+```{r}
+spg.cca.mou@meta.data$Kit <- 0
+spg.cca.mou@meta.data[colnames(dge.mou.spg.norm),]$Kit <- log(dge.mou.spg.norm["Kit",]+1)
+```
+
+```{r fig.width=3, fig.height=2.5}
+vlnplot_feature <- function(object, feature){
+cols <- c("#477900",
+"#9378ff",
+"#01ce74",
+"#ff2b85",
+"#b0d266",
+"#733697",
+"#ff9c1d",
+"#0190c8",
+"#ffa19e")
+df <- data.frame(expr = object@meta.data[,feature], ident = object@meta.data$res.0.6.ord)
+df <- df[df$ident %in% c(1:6),]
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=1) + ylab("") + xlab("") + ggtitle(feature)  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
+}
+```
+
+```{r}
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Mouse.spg.cca_Kit_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.mou, features.plot = "Kit", ident.include = c(1:6), cols.use = cols, point.size.use = 0, size.x.use = 0)
+print(p)
+dev.off()
+
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Human.spg.cca_KIT_violin.jpeg"),height=850,width=800,res=300)
+p <- VlnPlot(spg.cca.hum, features.plot = "KIT", ident.include = c(1:6), cols.use = cols, point.size.use = 0, size.x.use = 0)
+print(p)
+dev.off()
+```
