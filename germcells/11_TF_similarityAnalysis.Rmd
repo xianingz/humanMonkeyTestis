@@ -84,7 +84,19 @@ ggplot(data = df) +
   ylab("Rank Correlation") +
   xlab("Developmental Stages") +
   scale_shape_manual(values=c(19, 2)) +
-  scale_color_manual(values=c("#5a97e3","#e3625a"))
+  scale_color_manual(values=c("#5a97e3","#e35a97"))
+```
+
+
+```{r fig.width=8, fig.height=4.5}
+df <- data.frame(cor=c(mac.hum.cor, mac.hum.tf.cor,mou.hum.cor,mou.hum.tf.cor), stage=rep(c(1:26),4),Species=c(rep("Monkey",52),rep("Mouse",52)), GeneSet=rep(c(rep("All Orthologs",26),rep("TFs in Orthologs",26)),2))
+ggplot(data = df) + 
+  geom_vline(xintercept = 6.5, linetype="dotted") +
+  geom_point(aes(stage,cor,color=Species, shape=GeneSet)) + geom_smooth(aes(stage,cor,group=interaction(Species, GeneSet),color=Species,linetype=GeneSet),se=FALSE)  + 
+  ylab("Rank Correlation") +
+  xlab("Pesudo-times") +
+  scale_shape_manual(values=c(19, 2)) +
+  scale_color_manual(values=c("#5a97e3","#e35a97"))
 ```
 
 Subsample the same number of genes?
@@ -111,9 +123,9 @@ mou.hum.cor <- c()
 mac.hum.tf.cor <- c()
 mou.hum.tf.cor <- c()
 for(i in c(1:26)){
-  maccor <- cor(hum.26.cen.1ortho[,i],mac.26.cen.1ortho[,i], method = "spearman")
+  maccor <- cor(hum.26.cen.1ortho.sub[,i],mac.26.cen.1ortho.sub[,i], method = "spearman")
   mac.hum.cor <- c(mac.hum.cor, maccor)
-  moucor <- cor(hum.26.cen.1ortho[,i],mou.26.cen.1ortho[,i], method = "spearman")
+  moucor <- cor(hum.26.cen.1ortho.sub[,i],mou.26.cen.1ortho.sub[,i], method = "spearman")
   mou.hum.cor <- c(mou.hum.cor, moucor)
   maccor.tf <- cor(hum.26.cen.tfs[,i], mac.26.cen.tfs[,i], method = "spearman")
   mac.hum.tf.cor <- c(mac.hum.tf.cor, maccor.tf)
@@ -123,18 +135,15 @@ for(i in c(1:26)){
 ```
 
 
-```{r fig.width=9, fig.height=5}
+```{r fig.width=8, fig.height=4.5}
 df <- data.frame(cor=c(mac.hum.cor, mac.hum.tf.cor,mou.hum.cor,mou.hum.tf.cor), stage=rep(c(1:26),4),Species=c(rep("Monkey",52),rep("Mouse",52)), GeneSet=rep(c(rep("All Orthologs",26),rep("TFs in Orthologs",26)),2))
 ggplot(data = df) + 
-  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
-                   fill = "#f9ecdc", alpha = 0.03)+  
-  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
-                   fill = "#cfe1f7", alpha = 0.03)+
+  geom_vline(xintercept = 6.5, linetype="dotted") +
   geom_point(aes(stage,cor,color=Species, shape=GeneSet)) + geom_smooth(aes(stage,cor,group=interaction(Species, GeneSet),color=Species,linetype=GeneSet),se=FALSE)  + 
   ylab("Rank Correlation") +
-  xlab("Developmental Stages") +
+  xlab("Pseudo-times") +
   scale_shape_manual(values=c(19, 2)) +
-  scale_color_manual(values=c("#5a97e3","#e3625a"))
+  scale_color_manual(values=c("#5a97e3","#e35a97"))
 ```
 
 Mark TFs for Orthologs in three species connecting plots

@@ -1,0 +1,310 @@
+Try monocle using intersection of HVGs
+
+##Pre-runned monocle results
+```{r}
+mac.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.new.cds.rds")
+mac.cds <- mac.monocle$mac.cds
+mac.ording_genes <- mac.monocle$mac.ording_genes
+rm(mac.monocle)
+
+hum.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.new.cds.rds")
+hum.cds <- hum.monocle$hum.cds
+hum.ording_genes <- hum.monocle$hum.ording_genes
+rm(hum.monocle)
+
+mou.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.new.cds.rds")
+mou.cds <- mou.monocle$mou.cds
+mou.ording_genes <- mou.monocle$mou.ording_genes
+rm(mou.monocle)
+```
+
+```{r}
+library(monocle)
+dge.hum.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.raw2.rds")
+dge.mac.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.raw2.rds")
+dge.mou.raw2 <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.raw2.rds")
+humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
+```
+Intersection of genes
+```{r}
+int.genes <- humMacMouOrth.1to1.in[humMacMouOrth.1to1.in$external_gene_name.x %in% hum.ording_genes,]
+int.genes <- int.genes[int.genes$mmulatta_homolog_associated_gene_name %in% mac.ording_genes,]
+int.genes <- int.genes[int.genes$mmusculus_homolog_associated_gene_name %in% mou.ording_genes,]
+```
+###. Raw counts data for three species
+```{r}
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/human_merged1235_20cpg15upg.robj")
+dge.hum.raw <- dge@raw.data
+rm(dge)
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mac_merged9_nospikeincells.Robj")
+dge.mac.raw <- dge@raw.data
+rm(dge)
+#dge.mou.raw <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/GSE112393_MergedAdultMouseST25_DGE.txt",header = TRUE, row.names = 1,sep="\t")
+```
+
+```{r}
+dge.mou.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.germ.raw.rds")
+dge.mou.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.spg.full.raw.rds")
+dge.mou.raw <- cbind(dge.mou.raw, dge.mou.spg.raw[rownames(dge.mou.raw),])
+```
+
+```{r}
+spg.cca <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
+```
+
+
+Move SPG clus 7 to germ and generate SPG clus 1-6 for three species.
+```{r}
+hum.spg.cells <- spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]
+mac.spg.cells <- spg.cca@cell.names[spg.cca@meta.data$species=="Monkey" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]
+mou.spg.cells <- spg.cca@cell.names[spg.cca@meta.data$species=="Mouse" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)]
+```
+
+```{r}
+hum.germ.cells <- c(colnames(dge.hum.raw2), spg.cca@cell.names[spg.cca@meta.data$species=="Human" & spg.cca@meta.data$res.0.6.ord==8])
+mac.germ.cells <- c(colnames(dge.mac.raw2), spg.cca@cell.names[spg.cca@meta.data$species=="Monkey" & spg.cca@meta.data$res.0.6.ord==8])
+mou.germ.cells <- c(colnames(dge.mou.raw2), spg.cca@cell.names[spg.cca@meta.data$species=="Mouse" & spg.cca@meta.data$res.0.6.ord==8])
+```
+
+> length(hum.germ.cells)
+[1] 4293
+> length(mac.germ.cells)
+[1] 12016
+> length(mou.germ.cells)
+[1] 18537
+> length(hum.spg.cells)
+[1] 1688
+> length(mac.spg.cells)
+[1] 747
+> length(mou.spg.cells)
+[1] 2174
+
+###. Full dataset
+```{r}
+dge.hum.spg.raw <- dge.hum.raw[, hum.spg.cells]
+dge.mac.spg.raw <- dge.mac.raw[, mac.spg.cells]
+dge.mou.spg.raw <- dge.mou.raw[, mou.spg.cells]
+
+dge.hum.germ.raw <- dge.hum.raw[, hum.germ.cells]
+dge.mac.germ.raw <- dge.mac.raw[, mac.germ.cells]
+dge.mou.germ.raw <- dge.mou.raw[, mou.germ.cells]
+```
+
+###run monocle for human
+```{r}
+#Human
+hum.cds <- newCellDataSet(as.matrix(dge.hum.germ.raw))
+hum.cds <- estimateSizeFactors(hum.cds)
+hum.cds <- estimateDispersions(hum.cds)
+disp_table <- dispersionTable(hum.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+hum.cds <- setOrderingFilter(hum.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(hum.cds)
+hum.cds <- reduceDimension(hum.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+hum.cds <- clusterCells(hum.cds, num_clusters = 10)
+plot_cell_clusters(hum.cds)
+pData(hum.cds)$Cluster <- factor(pData(hum.cds)$Cluster)
+#hum.cds.deg <- differentialGeneTest(hum.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+#hum.ording_genes <- rownames(hum.cds.deg)[order(hum.cds.deg$qval)][1:2000]
+hum.ording_genes <- int.genes$external_gene_name.x
+hum.cds <- setOrderingFilter(hum.cds, ordering_genes = c(hum.ording_genes))
+hum.cds <- reduceDimension(hum.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+hum.cds <- orderCells(hum.cds)
+#saveRDS(list(hum.cds = hum.cds,hum.ording_genes = hum.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.new.cds.inter.20190825.rds", compress = FALSE)
+plot_cell_trajectory(hum.cds, color_by = "Pseudotime")
+```
+
+```{r}
+hum.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.new.cds.inter.20190825.rds")
+hum.cds <- hum.monocle$hum.cds
+hum.ording_genes <- hum.monocle$hum.ording_genes
+rm(hum.monocle)
+```
+
+
+###run monocle for monkey
+```{r}
+#Monkey
+mac.cds <- newCellDataSet(as.matrix(dge.mac.germ.raw))
+mac.cds <- estimateSizeFactors(mac.cds)
+mac.cds <- estimateDispersions(mac.cds)
+disp_table <- dispersionTable(mac.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+mac.cds <- setOrderingFilter(mac.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(mac.cds)
+mac.cds <- reduceDimension(mac.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+mac.cds <- clusterCells(mac.cds, num_clusters = 10)
+plot_cell_clusters(mac.cds)
+pData(mac.cds)$Cluster <- factor(pData(mac.cds)$Cluster)
+#mac.cds.deg <- differentialGeneTest(mac.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+#mac.ording_genes <- rownames(mac.cds.deg)[order(mac.cds.deg$qval)][1:2000]
+mac.ording_genes <- int.genes$mmulatta_homolog_associated_gene_name
+mac.cds <- setOrderingFilter(mac.cds, ordering_genes = c(mac.ording_genes))
+mac.cds <- reduceDimension(mac.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+mac.cds <- orderCells(mac.cds)
+saveRDS(list(mac.cds = mac.cds, mac.ording_genes = mac.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.new.cds.inter.20190825.rds", compress = FALSE)
+plot_cell_trajectory(mac.cds, color_by = "Pseudotime")
+```
+
+```{r}
+mac.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.new.cds.inter.20190825.rds")
+mac.cds <- mac.monocle$mac.cds
+mac.ording_genes <- mac.monocle$mac.ording_genes
+rm(mac.monocle)
+```
+
+
+###run monocle for mouse
+```{r}
+#Mouse
+mou.cds <- newCellDataSet(as.matrix(dge.mou.germ.raw))
+mou.cds <- estimateSizeFactors(mou.cds)
+mou.cds <- estimateDispersions(mou.cds)
+disp_table <- dispersionTable(mou.cds)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+mou.cds <- setOrderingFilter(mou.cds, unsup_clustering_genes$gene_id)
+plot_ordering_genes(mou.cds)
+mou.cds <- reduceDimension(mou.cds, max_components = 2,reduction_method = "tSNE", verbose = T)
+mou.cds <- clusterCells(mou.cds, num_clusters = 10)
+plot_cell_clusters(mou.cds)
+pData(mou.cds)$Cluster <- factor(pData(mou.cds)$Cluster)
+#mou.cds.deg <- differentialGeneTest(mou.cds, fullModelFormulaStr = "~Cluster", cores = detectCores()-2)
+#mou.ording_genes <- rownames(mou.cds.deg)[order(mou.cds.deg$qval)][1:2000]
+mou.ording_genes <- int.genes$mmusculus_homolog_associated_gene_name
+mou.cds <- setOrderingFilter(mou.cds, ordering_genes = c(mou.ording_genes))
+mou.cds <- reduceDimension(mou.cds, max_components = 4,scaling = T,norm_method = "log", verbose = T)
+mou.cds <- orderCells(mou.cds)
+saveRDS(list(mou.cds = mou.cds,mou.ording_genes = mou.ording_genes), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.new.cds.inter.20190825.rds", compress = FALSE)
+plot_cell_trajectory(mou.cds, color_by = "Pseudotime")
+```
+
+
+###plot the trajectory from monocle
+```{r fig.width=5,fig.height=5}
+plot_cell_trajectory(hum.cds, color_by = "Pseudotime")
+plot_cell_trajectory(mac.cds, color_by = "Pseudotime")
+plot_cell_trajectory(mou.cds, color_by = "Pseudotime")
+```
+
+##plot the expression pattern of genes along the trajecotry to determine biologically meaningful direction.
+```{r fig.width=5,fig.height=4}
+plot_genes_in_pseudotime(mac.cds["HORMAD1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(hum.cds["HORMAD1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Hormad1",], color_by = "Pseudotime")
+
+plot_genes_in_pseudotime(hum.cds["PIWIL1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mac.cds["PIWIL1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Piwil1",], color_by = "Pseudotime")
+
+plot_genes_in_pseudotime(hum.cds["ACRV1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mac.cds["ACRV1",], color_by = "Pseudotime")
+plot_genes_in_pseudotime(mou.cds["Acrv1",], color_by = "Pseudotime")
+```
+
+```{r}
+dge.hum.germ.norm <- apply(dge.hum.germ.raw,2,function(x) x/sum(x)*1e4)
+dge.mac.germ.norm <- apply(dge.mac.germ.raw,2,function(x) x/sum(x)*1e4)
+dge.mou.germ.norm <- apply(dge.mou.germ.raw,2,function(x) x/sum(x)*1e4)
+```
+
+```{r}
+dge.hum.germ.norm.int <- dge.hum.germ.norm[int.genes$external_gene_name.x,]
+dge.mac.germ.norm.int <- dge.mac.germ.norm[int.genes$mmulatta_homolog_associated_gene_name,]
+dge.mou.germ.norm.int <- dge.mou.germ.norm[int.genes$mmusculus_homolog_associated_gene_name,]
+dge.hum.germ.lg.int <- log(dge.hum.germ.norm.int + 1)
+dge.mac.germ.lg.int <- log(dge.mac.germ.norm.int + 1)
+dge.mou.germ.lg.int <- log(dge.mou.germ.norm.int + 1)
+```
+
+### Run cellAlign
+```{r}
+library(cellAlign)
+library(ComplexHeatmap)
+library(ggplot2)
+```
+
+```{r}
+numPts = 200
+hum.traj <- as.numeric(hum.cds$Pseudotime)
+hum.traj <- 1- hum.traj/max(hum.traj)
+names(hum.traj) <- colnames(dge.hum.germ.lg.int)
+align.hum <- cellAlign::interWeights(expDataBatch = dge.hum.germ.lg.int, trajCond = hum.traj, winSz = 0.1, numPts = numPts)
+
+mac.traj <- as.numeric(mac.cds$Pseudotime)
+mac.traj <- mac.traj/max(mac.traj)
+names(mac.traj) <- colnames(dge.mac.germ.lg.int)
+align.mac <- cellAlign::interWeights(expDataBatch = dge.mac.germ.lg.int, trajCond = mac.traj, winSz = 0.1, numPts = numPts)
+
+mou.traj <- as.numeric(mou.cds$Pseudotime)
+mou.traj <- mou.traj/max(mou.traj)
+names(mou.traj) <- colnames(dge.mou.germ.lg.int)
+align.mou <- cellAlign::interWeights(expDataBatch = dge.mou.germ.lg.int, trajCond = mou.traj, winSz = 0.1, numPts = numPts)
+```
+
+```{r}
+align.hum.scaled <- scaleInterpolate(align.hum)
+align.mac.scaled <- scaleInterpolate(align.mac)
+align.mou.scaled <- scaleInterpolate(align.mou)
+```
+
+Align: map monkey to human
+```{r}
+hummac.align <- globalAlign(align.mac.scaled$scaledData, 
+                     align.hum.scaled$scaledData, 
+                     scores = list(query = align.mac.scaled$traj, 
+                                   ref = align.hum.scaled$traj), 
+                     sigCalc = F, numPerm = 20)
+plotAlign(hummac.align)
+hummac.mapping <- mapRealDataGlobal(hummac.align, intTrajQuery = align.mac.scaled$traj, realTrajQuery = mac.traj, intTrajRef = align.hum.scaled$traj, realTrajRef = hum.traj)
+plotMapping(hummac.mapping)
+```
+
+Align: map mouse to monkey
+```{r}
+macmou.align <- globalAlign(align.mou.scaled$scaledData, align.mac.scaled$scaledData, scores = list(query = align.mou.scaled$traj, ref = align.mac.scaled$traj), sigCalc = F, numPerm = 20)
+plotAlign(macmou.align)
+macmou.mapping <- mapRealDataGlobal(macmou.align, intTrajQuery = align.mou.scaled$traj, realTrajQuery = mou.traj, intTrajRef = align.mac.scaled$traj, realTrajRef = mac.traj)
+plotMapping(macmou.mapping)
+```
+
+Align: map mouse to human
+```{r}
+hummou.align <- globalAlign(align.mou.scaled$scaledData, align.hum.scaled$scaledData, scores = list(query = align.mou.scaled$traj, ref = align.hum.scaled$traj), sigCalc = F, numPerm = 20)
+plotAlign(hummou.align)
+hummou.mapping <- mapRealDataGlobal(hummou.align, intTrajQuery = align.mou.scaled$traj, realTrajQuery = mou.traj, intTrajRef = align.hum.scaled$traj, realTrajRef = hum.traj)
+plotMapping(hummou.mapping)
+```
+
+```{r}
+mac.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mac.new.cds.rds")
+mac.1.cds <- mac.monocle$mac.cds
+rm(mac.monocle)
+
+hum.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/hum.new.cds.rds")
+hum.1.cds <- hum.monocle$hum.cds
+rm(hum.monocle)
+
+mou.monocle <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/mou.new.cds.rds")
+mou.1.cds <- mou.monocle$mou.cds
+rm(mou.monocle)
+```
+
+
+
+```{r fig.width=12, fig.height=4}
+par(mfrow=c(1,3))
+plot(hum.1.cds$Pseudotime, hum.cds$Pseudotime, xlab="Pesudotime using HVGs", ylab="Pesudotime using intersected HVGs")
+plot(1-mac.1.cds$Pseudotime, mac.cds$Pseudotime, xlab="Pesudotime using HVGs", ylab="Pesudotime using intersected HVGs")
+plot(mou.1.cds$Pseudotime, mou.cds$Pseudotime, xlab="Pesudotime using HVGs", ylab="Pesudotime using intersected HVGs")
+```
+
+
+```{r}
+library(stringr)
+```
+
+```{r}
+hum.bat <- table(unlist(lapply(a, function(x) str_split(x,"_")[[1]][1])))
+
+```
+

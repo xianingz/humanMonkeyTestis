@@ -1,0 +1,454 @@
+```{r}
+spg.ortho.connect <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/OrthologConnection_withTF.txt", header = TRUE, sep = "\t")
+```
+
+```{r}
+hum.hvgs <- spg.ortho.connect$humgen[spg.ortho.connect$humclu!=0]
+mac.hvgs <- spg.ortho.connect$macgen[spg.ortho.connect$macclu!=0]
+mou.hvgs <- spg.ortho.connect$mougen[spg.ortho.connect$mouclu!=0]
+```
+
+```{r}
+hum.spg.6.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/HumanSPGCluster_AllGene_Centroids.txt", header = TRUE, row.names = 1, sep = "\t")
+mac.spg.6.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MonkeySPGCluster_AllGene_Centroids.txt", header = TRUE, row.names = 1, sep = "\t")
+mou.spg.6.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_centroids/MouseSPGCluster_AllGene_Centroids.txt", header = TRUE, row.names = 1, sep = "\t")
+```
+
+```{r}
+hum.spg.6.cen.log <- log(hum.spg.6.cen + 1)
+mac.spg.6.cen.log <- log(mac.spg.6.cen + 1)
+mou.spg.6.cen.log <- log(mou.spg.6.cen + 1)
+
+hum.spg.6.cen.std <- t(apply(hum.spg.6.cen.log,1,function(x) (x-mean(x))/sd(x)))
+mac.spg.6.cen.std <- t(apply(mac.spg.6.cen.log,1,function(x) (x-mean(x))/sd(x)))
+mou.spg.6.cen.std <- t(apply(mou.spg.6.cen.log,1,function(x) (x-mean(x))/sd(x)))
+
+colnames(hum.spg.6.cen.std) <- c(1:6)
+colnames(mac.spg.6.cen.std) <- c(1:6)
+colnames(mou.spg.6.cen.std) <- c(1:6)
+```
+
+Calculate centroids for each kmeans cluster
+```{r}
+hum.spg.kmeans.centroids <- data.frame()
+for(i in c(1:4)){
+  genes.ls <- spg.ortho.connect$humgen[spg.ortho.connect$humclu==i]
+  centr <- apply(hum.spg.6.cen[as.character(genes.ls),],2, mean)
+  hum.spg.kmeans.centroids <- rbind(hum.spg.kmeans.centroids, centr)
+}
+mac.spg.kmeans.centroids <- data.frame()
+for(i in c(1:4)){
+  genes.ls <- spg.ortho.connect$macgen[spg.ortho.connect$macclu==i]
+  centr <- apply(mac.spg.6.cen[as.character(genes.ls),],2, mean)
+  mac.spg.kmeans.centroids <- rbind(mac.spg.kmeans.centroids, centr)
+}
+
+mou.spg.kmeans.centroids <- data.frame()
+for(i in c(1:4)){
+  genes.ls <- spg.ortho.connect$mougen[spg.ortho.connect$mouclu==i]
+  centr <- apply(mou.spg.6.cen[as.character(genes.ls),],2, mean)
+  mou.spg.kmeans.centroids <- rbind(mou.spg.kmeans.centroids, centr)
+}
+```
+
+
+## Human vs. Macaque
+```{r}
+hum.spg.extra.genes <- spg.ortho.connect[spg.ortho.connect$humclu!=0 & spg.ortho.connect$macclu==0,]
+rownames(hum.spg.extra.genes) <- hum.spg.extra.genes$macgen
+hum.spg.extra.corr.mac <- cor(t(mac.spg.6.cen[as.character(hum.spg.extra.genes$macgen),]), t(mac.spg.kmeans.centroids))
+hum.corr.mac.max <- apply(hum.spg.extra.corr.mac,1,max)
+hum.max.stage <- unlist(apply(hum.spg.extra.corr.mac,1,which.max))
+hum.spg.extra.genes[names(hum.max.stage),]$macclu <- as.vector(hum.max.stage)
+hum.spg.extra.genes[which(hum.corr.mac.max < 0.8),]$macclu <- 0
+```
+
+```{r}
+hist(hum.corr.mac.max, breaks = 20)
+```
+
+```{r}
+table(hum.spg.extra.genes$humclu, hum.spg.extra.genes$macclu)
+table(hum.spg.extra.genes$humclu)
+```
+
+```{r}
+mac.spg.extra.genes <- spg.ortho.connect[spg.ortho.connect$humclu==0 & spg.ortho.connect$macclu!=0,]
+rownames(mac.spg.extra.genes) <- mac.spg.extra.genes$humgen
+mac.spg.extra.corr.hum <- cor(t(hum.spg.6.cen[as.character(mac.spg.extra.genes$humgen),]), t(hum.spg.kmeans.centroids))
+mac.corr.hum.max <- apply(mac.spg.extra.corr.hum,1,max)
+mac.max.stage <- unlist(apply(mac.spg.extra.corr.hum,1,which.max))
+mac.spg.extra.genes[names(mac.max.stage),]$humclu <- as.vector(mac.max.stage)
+mac.spg.extra.genes[which(mac.corr.hum.max < 0.8),]$humclu <- 0
+```
+
+```{r}
+hist(mac.corr.hum.max, breaks = 20)
+```
+
+```{r}
+table(mac.spg.extra.genes$humclu, mac.spg.extra.genes$macclu)
+table(mac.spg.extra.genes$macclu)
+```
+
+```{r}
+hum.mac.spg.genes.orth <- rbind(spg.ortho.connect[spg.ortho.connect$humclu!=0 & spg.ortho.connect$macclu!=0,], hum.spg.extra.genes, mac.spg.extra.genes)
+```
+
+
+```{r}
+#Sort within each cluster
+hum.mac.spg.genes.orth$humclu[hum.mac.spg.genes.orth$humclu==0] = 7
+hum.mac.spg.genes.orth$macclu[hum.mac.spg.genes.orth$macclu==0] = 7
+
+hum.mac.hum.ord <- hum.mac.spg.genes.orth[order(hum.mac.spg.genes.orth$humclu, hum.mac.spg.genes.orth$macclu, hum.mac.spg.genes.orth$humgen),]
+hum.mac.mac.ord <- hum.mac.spg.genes.orth[order(hum.mac.spg.genes.orth$macclu, hum.mac.spg.genes.orth$humclu, hum.mac.spg.genes.orth$humgen),]
+
+hum.mac.spg.genes.orth.common <- hum.mac.spg.genes.orth[hum.mac.spg.genes.orth$macclu!=7 & hum.mac.spg.genes.orth$humclu!=7,]
+
+hum.mac.hum.ord <- hum.mac.hum.ord[hum.mac.hum.ord$humclu!=7, ]
+hum.mac.mac.ord <- hum.mac.mac.ord[hum.mac.mac.ord$macclu!=7, ]
+
+
+```
+
+```{r fig.width=4, fig.height=10}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.pdf", width = 4, height = 10)
+#tiff("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.tiff", units="in", width=4, height=10, res=600)
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(hum.mac.spg.genes.orth.common)[1])){
+#for(i in c(1:10)){ 
+  x = which(hum.mac.hum.ord$humgen == hum.mac.spg.genes.orth.common$humgen[i])
+  y = which(hum.mac.mac.ord$macgen == hum.mac.spg.genes.orth.common$macgen[i])
+  #print(kmeans.hum.mac.genes$external_gene_name.x[i])
+  #print(kmeans.hum.mac.genes$mmusculus_homolog_associated_gene_name[i])
+  x = 1000-x*1000/dim(hum.mac.hum.ord)[1]
+  y = 1000-y*1000/dim(hum.mac.mac.ord)[1]
+  #print(x)
+  #print(y)
+  segments(1,x,2,y,lwd = 0.2, col="#616161")
+}
+points(data.frame(x=rep(1,dim(hum.mac.hum.ord)[1]),y=1000-c(1:dim(hum.mac.hum.ord)[1])*1000/dim(hum.mac.hum.ord)[1]),col=cols[hum.mac.hum.ord$humclu], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(hum.mac.mac.ord)[1]),y=1000-c(1:dim(hum.mac.mac.ord)[1])*1000/dim(hum.mac.mac.ord)[1]),col=cols[hum.mac.mac.ord$macclu], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+#dev.off()
+```
+
+
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00",
+"grey")
+ha = rowAnnotation(stages = hum.mac.mac.ord$macclu, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6], "7" = cols[7])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mac.spg.6.cen.std[as.character(hum.mac.mac.ord$macgen),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = hum.mac.hum.ord$humclu, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(hum.spg.6.cen.std[as.character(hum.mac.hum.ord$humgen),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+## Human vs. Mouse
+```{r}
+hum.spg.extra.mou.genes <- spg.ortho.connect[spg.ortho.connect$humclu!=0 & spg.ortho.connect$mouclu==0,]
+rownames(hum.spg.extra.mou.genes) <- hum.spg.extra.mou.genes$mougen
+hum.spg.extra.corr.mou <- cor(t(mou.spg.6.cen[as.character(hum.spg.extra.mou.genes$mougen),]), t(mou.spg.kmeans.centroids))
+hum.corr.mou.max <- apply(hum.spg.extra.corr.mou,1,max)
+hum.max.mou.stage <- unlist(apply(hum.spg.extra.corr.mou,1,which.max))
+hum.spg.extra.mou.genes[names(hum.max.mou.stage),]$mouclu <- as.vector(hum.max.mou.stage)
+hum.spg.extra.mou.genes[which(hum.corr.mou.max < 0.8),]$mouclu <- 0
+```
+
+```{r}
+hist(hum.corr.mou.max, breaks = 20)
+```
+
+
+```{r}
+table(hum.spg.extra.mou.genes$humclu, hum.spg.extra.mou.genes$mouclu)
+table(hum.spg.extra.mou.genes$humclu)
+```
+
+```{r}
+mou.spg.extra.hum.genes <- spg.ortho.connect[spg.ortho.connect$humclu==0 & spg.ortho.connect$mouclu!=0,]
+rownames(mou.spg.extra.hum.genes) <- mou.spg.extra.hum.genes$humgen
+mou.spg.extra.corr.hum <- cor(t(hum.spg.6.cen[as.character(mou.spg.extra.hum.genes$humgen),]), t(hum.spg.kmeans.centroids))
+mou.corr.hum.max <- apply(mou.spg.extra.corr.hum,1,max)
+mou.max.hum.stage <- unlist(apply(mou.spg.extra.corr.hum,1,which.max))
+mou.spg.extra.hum.genes[names(mou.max.hum.stage),]$humclu <- as.vector(mou.max.hum.stage)
+mou.spg.extra.hum.genes[which(mou.corr.hum.max < 0.8),]$humclu <- 0
+```
+
+
+```{r}
+hist(mou.corr.hum.max, breaks = 20)
+```
+
+```{r}
+table(mou.spg.extra.hum.genes$humclu, mou.spg.extra.hum.genes$mouclu)
+table(mou.spg.extra.hum.genes$mouclu)
+```
+
+```{r}
+hum.mou.spg.genes.orth <- rbind(spg.ortho.connect[spg.ortho.connect$humclu!=0 & spg.ortho.connect$mouclu!=0,], hum.spg.extra.mou.genes, mou.spg.extra.hum.genes)
+```
+
+```{r}
+#Sort within each cluster
+hum.mou.spg.genes.orth$humclu[hum.mou.spg.genes.orth$humclu==0] = 7
+hum.mou.spg.genes.orth$mouclu[hum.mou.spg.genes.orth$mouclu==0] = 7
+
+hum.mou.hum.ord <- hum.mou.spg.genes.orth[order(hum.mou.spg.genes.orth$humclu, hum.mou.spg.genes.orth$mouclu, hum.mou.spg.genes.orth$humgen),]
+hum.mou.mou.ord <- hum.mou.spg.genes.orth[order(hum.mou.spg.genes.orth$mouclu, hum.mou.spg.genes.orth$humclu, hum.mou.spg.genes.orth$humgen),]
+
+hum.mou.spg.genes.orth.common <- hum.mou.spg.genes.orth[hum.mou.spg.genes.orth$mouclu!=7 & hum.mou.spg.genes.orth$humclu!=7,]
+
+hum.mou.hum.ord <- hum.mou.hum.ord[hum.mou.hum.ord$humclu!=7, ]
+hum.mou.mou.ord <- hum.mou.mou.ord[hum.mou.mou.ord$mouclu!=7, ]
+
+
+```
+
+
+```{r fig.width=4, fig.height=10}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.pdf", width = 4, height = 10)
+#tiff("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.tiff", units="in", width=4, height=10, res=600)
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(hum.mou.spg.genes.orth.common)[1])){
+
+  x = which(hum.mou.hum.ord$humgen == hum.mou.spg.genes.orth.common$humgen[i])
+  y = which(hum.mou.mou.ord$mougen == hum.mou.spg.genes.orth.common$mougen[i])
+
+  x = 1000-x*1000/dim(hum.mou.hum.ord)[1]
+  y = 1000-y*1000/dim(hum.mou.mou.ord)[1]
+
+  segments(1,y,2,x,lwd = 0.2, col="#616161")
+}
+points(data.frame(x=rep(2,dim(hum.mou.hum.ord)[1]),y=1000-c(1:dim(hum.mou.hum.ord)[1])*1000/dim(hum.mou.hum.ord)[1]),col=cols[hum.mou.hum.ord$humclu], pch=15, cex=0.8)
+points(data.frame(x=rep(1,dim(hum.mou.mou.ord)[1]),y=1000-c(1:dim(hum.mou.mou.ord)[1])*1000/dim(hum.mou.mou.ord)[1]),col=cols[hum.mou.mou.ord$mouclu], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+#dev.off()
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00",
+"grey")
+ha = rowAnnotation(stages = hum.mou.mou.ord$mouclu, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6], "7" = cols[7])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mou.spg.6.cen.std[as.character(hum.mou.mou.ord$mougen),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = hum.mou.hum.ord$humclu, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(hum.spg.6.cen.std[as.character(hum.mou.hum.ord$humgen),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+## Macque vs. Mouse
+```{r}
+mac.spg.extra.mou.genes <- spg.ortho.connect[spg.ortho.connect$macclu!=0 & spg.ortho.connect$mouclu==0,]
+rownames(mac.spg.extra.mou.genes) <- mac.spg.extra.mou.genes$mougen
+mac.spg.extra.corr.mou <- cor(t(mou.spg.6.cen[as.character(mac.spg.extra.mou.genes$mougen),]), t(mou.spg.kmeans.centroids))
+mac.corr.mou.max <- apply(mac.spg.extra.corr.mou,1,max)
+mac.max.mou.stage <- unlist(apply(mac.spg.extra.corr.mou,1,which.max))
+mac.spg.extra.mou.genes[names(mac.max.mou.stage),]$mouclu <- as.vector(mac.max.mou.stage)
+mac.spg.extra.mou.genes[which(mac.corr.mou.max < 0.8),]$mouclu <- 0
+```
+
+```{r}
+hist(mac.corr.mou.max, breaks = 20)
+```
+
+```{r}
+table(mac.spg.extra.mou.genes$macclu, mac.spg.extra.mou.genes$mouclu)
+table(mac.spg.extra.mou.genes$macclu)
+```
+
+```{r}
+mac.mou.spg.genes.orth <- rbind(spg.ortho.connect[spg.ortho.connect$macclu!=0 & spg.ortho.connect$mouclu!=0,], mac.spg.extra.mou.genes, mou.spg.extra.mac.genes)
+```
+
+
+```{r}
+mou.spg.extra.mac.genes <- spg.ortho.connect[spg.ortho.connect$macclu==0 & spg.ortho.connect$mouclu!=0,]
+rownames(mou.spg.extra.mac.genes) <- mou.spg.extra.mac.genes$macgen
+mou.spg.extra.corr.mac <- cor(t(mac.spg.6.cen[as.character(mou.spg.extra.mac.genes$macgen),]), t(mac.spg.kmeans.centroids))
+mou.corr.mac.max <- apply(mou.spg.extra.corr.mac,1,max)
+mou.max.mac.stage <- unlist(apply(mou.spg.extra.corr.mac,1,which.max))
+mou.spg.extra.mac.genes[names(mou.max.mac.stage),]$macclu <- as.vector(mou.max.mac.stage)
+mou.spg.extra.mac.genes[which(mou.corr.mac.max < 0.8),]$macclu <- 0
+```
+
+```{r}
+hist(mou.corr.mac.max, breaks = 20)
+```
+
+
+```{r}
+table(mou.spg.extra.mac.genes$macclu, mou.spg.extra.mac.genes$mouclu)
+table(mou.spg.extra.mac.genes$mouclu)
+```
+
+```{r}
+mac.mou.genes.orth <- rbind(spg.ortho.connect[spg.ortho.connect$macclu!=0 & spg.ortho.connect$mouclu!=0,], mac.spg.extra.mou.genes, mou.spg.extra.mac.genes)
+```
+
+
+```{r}
+#Sort within each cluster
+mac.mou.spg.genes.orth$macclu[mac.mou.spg.genes.orth$macclu==0] = 7
+mac.mou.spg.genes.orth$mouclu[mac.mou.spg.genes.orth$mouclu==0] = 7
+
+mac.mou.mac.ord <- mac.mou.spg.genes.orth[order(mac.mou.spg.genes.orth$macclu, mac.mou.spg.genes.orth$mouclu, mac.mou.spg.genes.orth$macgen),]
+mac.mou.mou.ord <- mac.mou.spg.genes.orth[order(mac.mou.spg.genes.orth$mouclu, mac.mou.spg.genes.orth$macclu, mac.mou.spg.genes.orth$macgen),]
+
+mac.mou.spg.genes.orth.common <- mac.mou.spg.genes.orth[mac.mou.spg.genes.orth$mouclu!=7 & mac.mou.spg.genes.orth$macclu!=7,]
+
+mac.mou.mac.ord <- mac.mou.mac.ord[mac.mou.mac.ord$macclu!=7, ]
+mac.mou.mou.ord <- mac.mou.mou.ord[mac.mou.mou.ord$mouclu!=7, ]
+
+
+```
+
+
+```{r fig.width=4, fig.height=10}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.pdf", width = 4, height = 10)
+#tiff("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/Coonector.humman.hum.tiff", units="in", width=4, height=10, res=600)
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+plot(1,xlim=c(1,2),ylim=c(0,1000),type="n",axes=FALSE,ann=FALSE)
+
+for(i in c(1:dim(mac.mou.spg.genes.orth.common)[1])){
+
+  x = which(mac.mou.mac.ord$macgen == mac.mou.spg.genes.orth.common$macgen[i])
+  y = which(mac.mou.mou.ord$mougen == mac.mou.spg.genes.orth.common$mougen[i])
+
+  x = 1000-x*1000/dim(mac.mou.mac.ord)[1]
+  y = 1000-y*1000/dim(mac.mou.mou.ord)[1]
+
+  segments(1,x,2,y,lwd = 0.2, col="#616161")
+}
+points(data.frame(x=rep(1,dim(mac.mou.mac.ord)[1]),y=1000-c(1:dim(mac.mou.mac.ord)[1])*1000/dim(mac.mou.mac.ord)[1]),col=cols[mac.mou.mac.ord$macclu], pch=15, cex=0.8)
+points(data.frame(x=rep(2,dim(mac.mou.mou.ord)[1]),y=1000-c(1:dim(mac.mou.mou.ord)[1])*1000/dim(mac.mou.mou.ord)[1]),col=cols[mac.mou.mou.ord$mouclu], pch=15, cex=0.8)
+#segments(1,0,10,0,col = "red")
+#dev.off()
+```
+
+
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00",
+"grey")
+ha = rowAnnotation(stages = mac.mou.mou.ord$mouclu, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6], "7" = cols[7])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mou.spg.6.cen.std[as.character(mac.mou.mou.ord$mougen),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, left_annotation = ha)
+```
+
+```{r fig.width=4, fig.height=10}
+cols <- c("#fabc3c",
+"#a64dd4",
+"#14e072",
+"#d9014a",
+"#abb4ff",
+"#b28e00")
+ha = rowAnnotation(stages = mac.mou.mac.ord$macclu, col = list(stages = c("1" = cols[1], "2" = cols[2], "3" = cols[3],"4" = cols[4], "5" = cols[5], "6" = cols[6])))
+#ha = HeatmapAnnotation(foo = anno_simple(cbind(1:10, 10:1), pch = 1:10))
+Heatmap(mac.spg.6.cen.std[as.character(mac.mou.mac.ord$macgen),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
+```
+
+```{r}
+write.table(hum.mac.spg.genes.orth[,c(1,2,4,5)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/hum_mac.spg.genelist.txt", row.names = FALSE)
+write.table(hum.mou.spg.genes.orth[,c(1,3,4,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/hum_mou.spg.genelist.txt", row.names = FALSE)
+write.table(mac.mou.spg.genes.orth[,c(2,3,5,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_GeneKmeans/mac_mou.spg.genelist.txt", row.names = FALSE)
+```
+
+#Calculate the percentage of the consistent, shiffted or singular genes.
+```{r}
+sum(hum.mac.spg.genes.orth.common$humclu == hum.mac.spg.genes.orth.common$macclu)
+sum(hum.mac.spg.genes.orth.common$humclu != hum.mac.spg.genes.orth.common$macclu & hum.mac.spg.genes.orth.common$humclu != 7 & hum.mac.spg.genes.orth.common$macclu != 7)
+sum(hum.mac.spg.genes.orth$humclu == 7 | hum.mac.spg.genes.orth$macclu == 7)
+dim(hum.mac.spg.genes.orth)[1]
+
+sum(hum.mac.spg.genes.orth.common$humclu == hum.mac.spg.genes.orth.common$macclu)/dim(hum.mac.spg.genes.orth)[1]
+sum(hum.mac.spg.genes.orth.common$humclu != hum.mac.spg.genes.orth.common$macclu & hum.mac.spg.genes.orth.common$humclu != 7 & hum.mac.spg.genes.orth.common$macclu != 7)/dim(hum.mac.spg.genes.orth)[1]
+sum(hum.mac.spg.genes.orth$humclu == 7 | hum.mac.spg.genes.orth$macclu == 7)/dim(hum.mac.spg.genes.orth)[1]
+```
+
+
+```{r}
+sum(hum.mou.spg.genes.orth.common$humclu == hum.mou.spg.genes.orth.common$mouclu)
+sum(hum.mou.spg.genes.orth.common$humclu != hum.mou.spg.genes.orth.common$mouclu & hum.mou.spg.genes.orth.common$humclu != 7 & hum.mou.spg.genes.orth.common$mouclu != 7)
+sum(hum.mou.spg.genes.orth$humclu == 7 | hum.mou.spg.genes.orth$mouclu == 7)
+dim(hum.mou.spg.genes.orth)[1]
+
+sum(hum.mou.spg.genes.orth.common$humclu == hum.mou.spg.genes.orth.common$mouclu)/dim(hum.mou.spg.genes.orth)[1]
+sum(hum.mou.spg.genes.orth.common$humclu != hum.mou.spg.genes.orth.common$mouclu & hum.mou.spg.genes.orth.common$humclu != 7 & hum.mou.spg.genes.orth.common$mouclu != 7)/dim(hum.mou.spg.genes.orth)[1]
+sum(hum.mou.spg.genes.orth$humclu == 7 | hum.mou.spg.genes.orth$mouclu == 7)/dim(hum.mou.spg.genes.orth)[1]
+```
+
+```{r}
+sum(mac.mou.spg.genes.orth.common$macclu == mac.mou.spg.genes.orth.common$mouclu)
+sum(mac.mou.spg.genes.orth.common$macclu != mac.mou.spg.genes.orth.common$mouclu & mac.mou.spg.genes.orth.common$macclu != 7 & mac.mou.spg.genes.orth.common$mouclu != 7)
+sum(mac.mou.spg.genes.orth$macclu == 7 | mac.mou.spg.genes.orth$mouclu == 7)
+dim(mac.mou.spg.genes.orth)[1]
+
+sum(mac.mou.spg.genes.orth.common$macclu == mac.mou.spg.genes.orth.common$mouclu)/dim(mac.mou.spg.genes.orth)[1]
+sum(mac.mou.spg.genes.orth.common$macclu != mac.mou.spg.genes.orth.common$mouclu & mac.mou.spg.genes.orth.common$macclu != 7 & mac.mou.spg.genes.orth.common$mouclu != 7)/dim(mac.mou.spg.genes.orth)[1]
+sum(mac.mou.spg.genes.orth$macclu == 7 | mac.mou.spg.genes.orth$mouclu == 7)/dim(mac.mou.spg.genes.orth)[1]
+```
+
+```{r}
+dim(hum.mac.hum.ord)
+dim(hum.mac.mac.ord)
+dim(mac.mou.mac.ord)
+dim(mac.mou.mou.ord)
+dim(hum.mou.mou.ord)
+dim(hum.mou.hum.ord)
+```

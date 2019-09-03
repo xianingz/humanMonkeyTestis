@@ -43,6 +43,13 @@ dge.mac.spg.full <- RunTSNE(object = dge.mac.spg.full, pc.genes = dge.mac.spg.fu
 dge.mac.spg.full <- RunUMAP(object = dge.mac.spg.full, pc.genes = dge.mac.spg.full@var.genes)
 ```
 
+Plot heatmap for nGenes and nUMIs
+```{r fig.width=4, fig.height=3.5}
+FeaturePlot(dge.mac.spg.full, reduction.use = "umap",features.plot = "nGene")
+FeaturePlot(dge.mac.spg.full, reduction.use = "umap",features.plot = "nUMI")
+```
+
+
 ```{r fig.width=6,fig.height=4.5}
 PCAPlot(object = dge.mac.spg.full, dim.1 = 1, dim.2 = 2)
 PCAPlot(object = dge.mac.spg.full, dim.1 = 1, dim.2 = 2, group.by="indi")
@@ -137,10 +144,106 @@ if(i==1){
 
 
 
+##Try lower resolution
+```{r}
+dge.mac.spg.full <- FindClusters(object = dge.mac.spg.full, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.3)
+```
+
+```{r fig.width=6, fig.height=4.5}
+dge.mac.spg.full@meta.data$res.0.3.ord <- plyr::mapvalues(dge.mac.spg.full@meta.data$res.0.3, c(3,2,1,0),c(1,2,3,4))
+TSNEPlot(object = dge.mac.spg.full, do.return = TRUE, pt.size = 1, group.by = "res.0.3.ord")
+DimPlot(object = dge.mac.spg.full, reduction.use = "umap", do.return = TRUE, group.by="res.0.3.ord")
+DimPlot(object = dge.mac.spg.full, reduction.use = "pca", do.return = TRUE, group.by="res.0.3.ord")
+```
 
 
+```{r fig.width=4.5, fig.height=3}
+df <- data.frame(dge.mac.spg.full@dr$umap@cell.embeddings)
+df <- cbind(df, dge.mac.spg.full@meta.data$res.0.3.ord)
+colnames(df) <- c("UMAP1","UMAP2","Cluster")
+ggplot(data = df) + geom_point(aes(x=UMAP1, y=UMAP2, col=Cluster)) + scale_color_manual(values = cols[1:7]) +  guides(colour = guide_legend(override.aes = list(size=5))) + theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(colour = "black"),
+        legend.title=element_blank(),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+#DimPlot(object = dge.mac, reduction.use = "umap",do.return = TRUE, group.by="res.0.2.ord", cols.use = cols[1:7])
+```
+
+
+```{r fig.width=5, fig.height=4}
+dge.mac.spg.4.cen <- matrix(0, nrow = dim(dge.mac.spg.full@data)[1], ncol = 4)
+for(i in c(1:4)){
+  mac.i.cells <- dge.mac.spg.full@cell.names[dge.mac.spg.full@meta.data$res.0.3.ord==i]
+  mac.i.pro <- apply(exp(dge.mac.spg.full@data[,mac.i.cells])-1,1,mean)
+  dge.mac.spg.4.cen[,i] <- log(mac.i.pro+1)
+}
+dge.mac.spg.4.cen.cor <- cor(dge.mac.spg.4.cen, method = "spearman")
+rownames(dge.mac.spg.4.cen.cor) <- c(1:4)
+colnames(dge.mac.spg.4.cen.cor) <- c(1:4)
+
+Heatmap(dge.mac.spg.4.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+```
+
+```{r}
+table(dge.mac.spg.full@meta.data$res.0.3.ord, spg.cca@meta.data[dge.mac.spg.full@cell.names,]$res.0.6.ord)
+```
+
+
+###. Marker genes
+```{r fig.width=8,fig.height=10}
+colfunc <- colorRampPalette(c("blue", "grey", "red"))
+spg.markers <- c("PIWIL4", "TSPAN33", "MORC1","ID4","GFRA1","CDK17","MKI67","DMRT1","DMRTB1","SOLH2H","ZBTB16","TCF3","ZCWPW1","STRA8", "L1TD1","UCHL1","TEX101","SYCP2","MEIOB","LY6K", "HORMAD1")
+spg.markers <- intersect(spg.markers, rownames(dge.mac.spg.full@raw.data))
+par(mfrow=c(5,4))
+for(i in spg.markers){
+  plotgene(dge.mac.spg.full, i, reduction.use = "umap")
+}
+#FeaturePlot(object = dge.hum.spg.full,features.plot = spg.markers,reduction.use = "tsne",pt.size = 0.5,nCol = 4)
+VlnPlot(object = dge.mac.spg.full, features.plot = spg.markers, nCol = 4,group.by = "res.0.3.ord",point.size.use=0)
+```
+
+###. Call Markers
+
+```{r}
+dge.mac.spg.full <- SetIdent(dge.mac.spg.full, ident.use = dge.mac.spg.full@meta.data$res.0.3.ord)
+```
+
+```{r}
+mac.spg.markers <- list()
+for(i in c(1:4)){
+  tmp <- FindMarkers(dge.mac.spg.full, ident.1 = i, min.pct = 0.2, logfc.threshold = 0.7,only.pos = TRUE)
+  tmp <- tmp[tmp$p_val_adj < 0.01, ]
+  mac.spg.markers[[i]] <- tmp
+}
+```
+
+```{r}
+dim(mac.spg.markers[[1]])
+dim(mac.spg.markers[[2]])
+dim(mac.spg.markers[[3]])
+dim(mac.spg.markers[[4]])
+```
 
 
 ```{r}
-
+library(xlsx)
 ```
+
+
+```{r}
+for(i in c(1:4)){
+if(i==1){
+  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/Mac_SPG_4Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/Mac_SPG_4Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
+```
+
+

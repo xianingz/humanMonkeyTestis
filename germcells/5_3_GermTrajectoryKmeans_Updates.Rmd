@@ -374,6 +374,8 @@ ha = rowAnnotation(stages = mac.mou.mac.ord$macclu, col = list(stages = c("1" = 
 Heatmap(mac.cen.std[as.character(mac.mou.mac.ord$macgen),], cluster_rows = FALSE, cluster_columns = FALSE,show_row_names = FALSE, right_annotation = ha)
 ```
 
+
+#Calculate the percentage of the consistent, shiffted or singular genes.
 ```{r}
 sum(hum.mac.genes.orth.common$humclu == hum.mac.genes.orth.common$macclu)
 sum(hum.mac.genes.orth.common$humclu != hum.mac.genes.orth.common$macclu & hum.mac.genes.orth.common$humclu != 7 & hum.mac.genes.orth.common$macclu != 7)
@@ -406,5 +408,118 @@ dim(mac.mou.genes.orth)[1]
 sum(mac.mou.genes.orth.common$macclu == mac.mou.genes.orth.common$mouclu)/dim(mac.mou.genes.orth)[1]
 sum(mac.mou.genes.orth.common$macclu != mac.mou.genes.orth.common$mouclu & mac.mou.genes.orth.common$macclu != 7 & mac.mou.genes.orth.common$mouclu != 7)/dim(mac.mou.genes.orth)[1]
 sum(mac.mou.genes.orth$macclu == 7 | mac.mou.genes.orth$mouclu == 7)/dim(mac.mou.genes.orth)[1]
+```
+
+```{r}
+dim(hum.mac.hum.ord)
+dim(hum.mac.mac.ord)
+dim(hum.mou.hum.ord)
+dim(hum.mou.mou.ord)
+dim(mac.mou.mac.ord)
+dim(mac.mou.mou.ord)
+```
+
+```{r}
+write.table(hum.mac.hum.ord[,c(1,2,4,5)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/hum_mac.hum.genelist.txt", row.names = FALSE)
+write.table(hum.mac.mac.ord[,c(1,2,4,5)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/hum_mac.mac.genelist.txt", row.names = FALSE)
+
+write.table(hum.mou.hum.ord[,c(1,3,4,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/hum_mou.hum.genelist.txt", row.names = FALSE)
+write.table(hum.mou.mou.ord[,c(1,3,4,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/hum_mou.mou.genelist.txt", row.names = FALSE)
+
+write.table(mac.mou.mac.ord[,c(2,3,5,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/mac_mou.mac.genelist.txt", row.names = FALSE)
+write.table(mac.mou.mou.ord[,c(2,3,5,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/mac_mou.mou.genelist.txt", row.names = FALSE)
+```
+
+```{r}
+write.table(hum.mac.genes.orth[,c(1,2,4,5)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/hum_mac.genelist.txt", row.names = FALSE)
+write.table(hum.mou.genes.orth[,c(1,3,4,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/hum_mou.genelist.txt", row.names = FALSE)
+write.table(mac.mou.genes.orth[,c(2,3,5,6)], quote = FALSE, sep = "\t", file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_kmeans/mac_mou.genelist.txt", row.names = FALSE)
+```
+
+
+```{r}
+hum.mac.hum.clus.num <- c()
+for(i in c(1:6)){
+a <- sum(hum.mac.genes.orth.common$humclu == hum.mac.genes.orth.common$macclu & hum.mac.genes.orth.common$humclu == i)
+b <- sum(hum.mac.genes.orth.common$humclu != hum.mac.genes.orth.common$macclu & hum.mac.genes.orth.common$macclu != 7 & hum.mac.genes.orth.common$humclu == i)
+c <- sum(hum.mac.genes.orth$humclu == i & hum.mac.genes.orth$macclu == 7)
+d <- sum(hum.mac.genes.orth$humclu == i)
+hum.mac.hum.clus.num <- cbind(hum.mac.hum.clus.num,c(a,b,c,d))
+}
+hum.mac.hum.clus.rat <- apply(hum.mac.hum.clus.num,2,function(x) x/x[4])
+```
+
+```{r}
+hum.mac.mac.clus.num <- c()
+for(i in c(1:6)){
+a <- sum(hum.mac.genes.orth.common$humclu == hum.mac.genes.orth.common$macclu & hum.mac.genes.orth.common$macclu == i)
+b <- sum(hum.mac.genes.orth.common$humclu != hum.mac.genes.orth.common$macclu & hum.mac.genes.orth.common$humclu != 7 & hum.mac.genes.orth.common$macclu == i)
+c <- sum(hum.mac.genes.orth$macclu == i & hum.mac.genes.orth$humclu == 7)
+d <- sum(hum.mac.genes.orth$macclu == i)
+hum.mac.mac.clus.num <- cbind(hum.mac.mac.clus.num,c(a,b,c,d))
+}
+hum.mac.mac.clus.rat <- apply(hum.mac.mac.clus.num,2,function(x) x/x[4])
+```
+
+```{r}
+hum.mac.hum.clus.rat/2 + hum.mac.mac.clus.rat/2
+```
+
+
+```{r}
+hum.mou.hum.clus.num <- c()
+for(i in c(1:6)){
+a <- sum(hum.mou.genes.orth.common$humclu == hum.mou.genes.orth.common$mouclu & hum.mou.genes.orth.common$humclu == i)
+b <- sum(hum.mou.genes.orth.common$humclu != hum.mou.genes.orth.common$mouclu & hum.mou.genes.orth.common$mouclu != 7 & hum.mou.genes.orth.common$humclu == i)
+c <- sum(hum.mou.genes.orth$humclu == i & hum.mou.genes.orth$mouclu == 7)
+d <- sum(hum.mou.genes.orth$humclu == i)
+hum.mou.hum.clus.num <- cbind(hum.mou.hum.clus.num,c(a,b,c,d))
+}
+hum.mou.hum.clus.rat <- apply(hum.mou.hum.clus.num,2,function(x) x/x[4])
+```
+
+```{r}
+hum.mou.mou.clus.num <- c()
+for(i in c(1:6)){
+a <- sum(hum.mou.genes.orth.common$humclu == hum.mou.genes.orth.common$mouclu & hum.mou.genes.orth.common$mouclu == i)
+b <- sum(hum.mou.genes.orth.common$humclu != hum.mou.genes.orth.common$mouclu & hum.mou.genes.orth.common$humclu != 7 & hum.mou.genes.orth.common$mouclu == i)
+c <- sum(hum.mou.genes.orth$mouclu == i & hum.mou.genes.orth$humclu == 7)
+d <- sum(hum.mou.genes.orth$mouclu == i)
+hum.mou.mou.clus.num <- cbind(hum.mou.mou.clus.num,c(a,b,c,d))
+}
+hum.mou.mou.clus.rat <- apply(hum.mou.mou.clus.num,2,function(x) x/x[4])
+```
+
+```{r}
+hum.mou.hum.clus.rat/2 + hum.mou.mou.clus.rat/2
+```
+
+
+```{r}
+mac.mou.mac.clus.num <- c()
+for(i in c(1:6)){
+a <- sum(mac.mou.genes.orth.common$macclu == mac.mou.genes.orth.common$mouclu & mac.mou.genes.orth.common$macclu == i)
+b <- sum(mac.mou.genes.orth.common$macclu != mac.mou.genes.orth.common$mouclu & mac.mou.genes.orth.common$mouclu != 7 & mac.mou.genes.orth.common$macclu == i)
+c <- sum(mac.mou.genes.orth$macclu == i & mac.mou.genes.orth$mouclu == 7)
+d <- sum(mac.mou.genes.orth$macclu == i)
+mac.mou.mac.clus.num <- cbind(mac.mou.mac.clus.num,c(a,b,c,d))
+}
+mac.mou.mac.clus.rat <- apply(mac.mou.mac.clus.num,2,function(x) x/x[4])
+```
+
+```{r}
+mac.mou.mou.clus.num <- c()
+for(i in c(1:6)){
+a <- sum(mac.mou.genes.orth.common$macclu == mac.mou.genes.orth.common$mouclu & mac.mou.genes.orth.common$mouclu == i)
+b <- sum(mac.mou.genes.orth.common$macclu != mac.mou.genes.orth.common$mouclu & mac.mou.genes.orth.common$macclu != 7 & mac.mou.genes.orth.common$mouclu == i)
+c <- sum(mac.mou.genes.orth$mouclu == i & mac.mou.genes.orth$macclu == 7)
+d <- sum(mac.mou.genes.orth$mouclu == i)
+mac.mou.mou.clus.num <- cbind(mac.mou.mou.clus.num,c(a,b,c,d))
+}
+mac.mou.mou.clus.rat <- apply(mac.mou.mou.clus.num,2,function(x) x/x[4])
+```
+
+```{r}
+mac.mou.mac.clus.rat/2 + mac.mou.mou.clus.rat/2
 ```
 

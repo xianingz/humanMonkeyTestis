@@ -134,6 +134,16 @@ Heatmap(spg.cor.0.6[ord,ord], cluster_rows = FALSE, cluster_columns = FALSE)
 dev.off()
 ```
 
+```{r fig.width=5, fig.height=4}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cca.species.tsne.pdf",width = 5,height = 4)
+#jpeg("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cca.species.tsne.jpeg",width = 5,height = 4, units = "in",res = 600)
+
+pdf("~/storage/HumanMacaqueMouseCompAnaysis/interdata/plots/spg.cca.species.tsne.pdf",width = 5,height = 4)
+TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "species",cells.use = spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)], colors.use = c("#e3a65a","#5a97e3","#e35a97"))
+dev.off()
+```
+
+
 ###plot the clusters in TSNE and UMAP
 ```{r fig.width=5, fig.height=4}
 cols <- c("#477900",

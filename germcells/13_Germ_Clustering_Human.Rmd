@@ -102,6 +102,23 @@ DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="re
 DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.8.ord.15pc", cols.use = cols)
 ```
 
+```{r fig.width=6, fig.height=4}
+df <- data.frame(dge.hum@dr$umap@cell.embeddings)
+df <- cbind(df, dge.hum@meta.data$res.0.6.ord)
+colnames(df) <- c("UMAP1","UMAP2","Cluster")
+ggplot(data = df) + geom_point(aes(x=UMAP1, y=UMAP2, col=Cluster)) + scale_color_manual(values = cols[1:9]) +  guides(colour = guide_legend(override.aes = list(size=5))) + theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(colour = "black"),
+        legend.title=element_blank(),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+#DimPlot(object = dge.mac, reduction.use = "umap",do.return = TRUE, group.by="res.0.2.ord", cols.use = cols[1:7])
+```
 
 ## Cluster centroid and Self-self rank correlation
 ```{r}
