@@ -523,3 +523,45 @@ mac.mou.mou.clus.rat <- apply(mac.mou.mou.clus.num,2,function(x) x/x[4])
 mac.mou.mac.clus.rat/2 + mac.mou.mou.clus.rat/2
 ```
 
+```{r}
+library(reshape2)
+library(ggplot2)
+```
+
+
+
+```{r}
+stakbar <- function(text){
+dat <- read.table(text = text,sep="\t")
+colnames(dat) <- c(1:6)
+rownames(dat) <- c("In Phase", "Shifted", "Unique")
+dat <- data.frame(t(dat))
+dat$Cluster <- c(1:6)
+df <- melt(dat, id.var="Cluster")
+p <- ggplot(df, aes(x = Cluster, y = value, fill = variable)) + 
+  geom_bar(stat = "identity",color = "grey40",width = 1, alpha=0.8) + 
+  scale_x_continuous(breaks=c(1:6)) + 
+  theme(axis.title.y=element_blank(),
+        legend.title=element_blank()) + 
+  scale_fill_brewer(palette="Dark2")
+print(p)
+}
+```
+
+```{r}
+hummac <- "0.556	0.458	0.530	0.400	0.536	0.534
+0.360	0.379	0.306	0.323	0.278	0.253
+0.084	0.163	0.164	0.277	0.186	0.213"
+macmou <- "0.445	0.358	0.406	0.257	0.431	0.417
+0.475	0.488	0.433	0.514	0.388	0.361
+0.079	0.154	0.161	0.229	0.181	0.222"
+hummou <- "0.377	0.310	0.304	0.196	0.386	0.371
+0.476	0.479	0.457	0.481	0.353	0.306
+0.146	0.211	0.239	0.323	0.261	0.323"
+```
+
+```{r fig.width=5, fig.height=4.5}
+stakbar(hummac)
+stakbar(macmou)
+stakbar(hummou)
+```
