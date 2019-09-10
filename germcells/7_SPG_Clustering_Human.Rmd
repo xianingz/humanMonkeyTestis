@@ -187,6 +187,16 @@ ggplot(data = df) + geom_point(aes(x=UMAP1, y=UMAP2, col=Cluster)) + scale_color
 table(dge.hum.spg.full@meta.data$res.0.4.ord, spg.cca@meta.data[dge.hum.spg.full@cell.names,]$res.0.6.ord)
 ```
 
+```{r}
+spg.cca@meta.data$hSPG <- 0
+spg.cca@meta.data[dge.hum.spg.full@cell.names,]$hSPG <- dge.hum.spg.full@meta.data$res.0.4.ord
+```
+
+```{r fig.width=6, fig.height=5}
+DimPlot(object = spg.cca, reduction.use = "tsne", pt.size = 1, group.by = "hSPG", cols.use = c("grey","#49adad","#cb5b42","#67a64e","#8d70c9","#b69340","#c8588c"),cells.use = rownames(spg.cca@meta.data)[spg.cca@meta.data$res.0.6.ord %in% c(1:6)], plot.order = c(4,3,2,1,0))
+```
+
+
 ```{r fig.width=5, fig.height=4}
 dge.hum.spg.4.cen <- matrix(0, nrow = dim(dge.hum.spg.full@data)[1], ncol = 4)
 for(i in c(1:4)){
@@ -200,6 +210,13 @@ colnames(dge.hum.spg.4.cen.cor) <- c(1:4)
 
 Heatmap(dge.hum.spg.4.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
 ```
+
+```{r}
+rownames(dge.hum.spg.4.cen) <- rownames(dge.hum.spg.full@data)
+saveRDS(dge.hum.spg.4.cen, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.4.cen.rds")
+```
+
+
 ###. Marker genes
 ```{r fig.width=8,fig.height=10}
 colfunc <- colorRampPalette(c("blue", "grey", "red"))
@@ -313,3 +330,5 @@ plot(st6[,1],st6[,2], col=zcolor,pch=19,cex=0.3,cex.main=1.5,axes=F,main=feature
 #dev.off()
 }
 ```
+
+

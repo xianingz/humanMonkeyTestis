@@ -194,6 +194,14 @@ Heatmap(dge.mac.spg.4.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
 table(dge.mac.spg.full@meta.data$res.0.3.ord, spg.cca@meta.data[dge.mac.spg.full@cell.names,]$res.0.6.ord)
 ```
 
+```{r}
+spg.cca@meta.data$MacSPG <- 0
+spg.cca@meta.data[dge.mac.spg.full@cell.names,]$MacSPG <- dge.mac.spg.full@meta.data$res.0.3.ord
+```
+
+```{r fig.width=6, fig.height=5}
+DimPlot(object = spg.cca, reduction.use = "tsne", pt.size = 1, group.by = "MacSPG", cols.use = c("grey","#49adad","#cb5b42","#67a64e","#8d70c9","#b69340","#c8588c"),cells.use = rownames(spg.cca@meta.data)[spg.cca@meta.data$res.0.6.ord %in% c(1:6)], plot.order = c(4,3,2,1,0))
+```
 
 ###. Marker genes
 ```{r fig.width=8,fig.height=10}

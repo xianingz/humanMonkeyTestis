@@ -189,10 +189,14 @@ spg.cca@meta.data$mouseclus[spg.cca@cell.names %in% mouse4clus$V1[mouse4clus$V2=
 
 ###plot the previous clusters on the new tsne.
 ```{r fig.width=6, fig.height=5}
-pdf("~/storage/HumanMacaqueMouseCompAnaysis/SPG/MouseSPGCluHightlight.pdf",width = 6, height = 5)
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/SPG/MouseSPGCluHightlight.pdf",width = 6, height = 5)
 DimPlot(object = spg.cca, reduction.use = "tsne", pt.size = 1, group.by = "mouseclus", cols.use = c("grey","#49adad","#cb5b42","#67a64e","#8d70c9","#b69340","#c8588c"),cells.use = rownames(spg.cca@meta.data)[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
-dev.off()
+#dev.off()
 ```
+```{r}
+table( spg.cca@meta.data$mouseclus,spg.cca@meta.data$res.0.6.ord)
+```
+
 
 ```{r}
 spg.cca <- SetIdent(spg.cca, ident.use = spg.cca@meta.data$res.0.6.ord)
@@ -1040,4 +1044,49 @@ jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin
 p <- VlnPlot(spg.cca.hum, features.plot = "KIT", ident.include = c(1:6), cols.use = cols, point.size.use = 0, size.x.use = 0)
 print(p)
 dev.off()
+```
+
+
+##. Find Markers only for the 6 clusters -- 20190907
+
+```{r}
+spg.cca.6 <- SubsetData(spg.cca,ident.use = c(1:6))
+```
+
+
+###. Conserved markers
+```{r}
+markers.6clus <- list()
+for(i in c(1:6)){
+  markers.6clus[[i]] <- FindConservedMarkers(spg.cca.6, ident.1 = i, grouping.var = "species", logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
+}
+```
+
+Write to excel
+```{r}
+for(i in c(1:6)){
+if(i==1){
+  write.xlsx2(x = markers.6clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_6Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = markers.6clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_6Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
+```
+
+###findmarkers
+```{r}
+markers.sep.6clus <- list()
+for(i in c(1:6)){
+  markers.sep.6clus[[i]] <- FindMarkers(spg.cca.6, ident.1 = i, grouping.var = "species", logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
+}
+```
+
+```{r}
+for(i in c(1:6)){
+if(i==1){
+  write.xlsx2(x = markers.sep.6clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_6Clusters_Markers_allmerge.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+}else{
+  write.xlsx2(x = markers.sep.6clus[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_6Clusters_Markers_allmerge.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+}
+}
 ```

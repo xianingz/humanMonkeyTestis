@@ -244,6 +244,45 @@ TSNEPlot(object = spg.cca, do.return = TRUE, pt.size = 1, group.by = "cellcycle"
 table(spg.cca@meta.data$cellcycle, spg.cca@meta.data$res.0.6.ord)
 ```
 
+```{r}
+spg.cca@meta.data$cyclestage <- spg.cca@meta.data$cellcycle
+spg.cca@meta.data$cyclestage[spg.cca@meta.data$cellcycle %in% c(5:15)] = "S"
+spg.cca@meta.data$cyclestage[spg.cca@meta.data$cellcycle %in% c(16:22)] = "G2"
+spg.cca@meta.data$cyclestage[spg.cca@meta.data$cellcycle %in% c(23:28)] = "G2/M"
+spg.cca@meta.data$cyclestage[spg.cca@meta.data$cellcycle %in% c(29:35)] = "M/G1"
+spg.cca@meta.data$cyclestage[spg.cca@meta.data$cellcycle %in% c(36:47,1:4)] = "G1/S"
+```
+
+Overall
+```{r}
+clusnum <- table(spg.cca@meta.data$cyclestage, spg.cca@meta.data$res.0.6.ord)[c("G2","G2/M","M/G1","G1/S","S"),1:6]
+clusper <- round(apply(clusnum,2, function(x) x/sum(x)),3)
+```
+
+
+```{r}
+clusnum.hum <- table(spg.cca@meta.data$cyclestage[spg.cca@meta.data$species=="Human"], spg.cca@meta.data$res.0.6.ord[spg.cca@meta.data$species=="Human"])[c("G2","G2/M","M/G1","G1/S","S"),1:6]
+clusper.hum <- round(apply(clusnum.hum,2, function(x) x/sum(x)),3)
+```
+
+
+```{r}
+clusnum.mac <- table(spg.cca@meta.data$cyclestage[spg.cca@meta.data$species=="Monkey"], spg.cca@meta.data$res.0.6.ord[spg.cca@meta.data$species=="Monkey"])[c("G2","G2/M","M/G1","G1/S","S"),1:6]
+clusper.mac <- round(apply(clusnum.mac,2, function(x) x/sum(x)),3)
+```
+
+```{r}
+clusnum.mou <- table(spg.cca@meta.data$cyclestage[spg.cca@meta.data$species=="Mouse"], spg.cca@meta.data$res.0.6.ord[spg.cca@meta.data$species=="Mouse"])[c("G2","G2/M","M/G1","G1/S","S"),1:6]
+clusper.mou <- round(apply(clusnum.mou,2, function(x) x/sum(x)),3)
+```
+
+```{r}
+clusper
+clusper.hum
+clusper.mac
+clusper.mou
+```
+
 ##G0 estimate
 ```{r}
 dge.hum.spg.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.spg.full.raw.rds")

@@ -115,15 +115,12 @@ mac.pro <- apply(mac.cen, 2, function(x) sum(x[mac.gs])/sum(x))
 mou.pro <- apply(mou.cen, 2, function(x) sum(x[mou.gs])/sum(x))
 df <- data.frame(pro=c(hum.pro, mac.pro, mou.pro)*100, stage=rep(c(1:26),3),Species=c(rep("Human",26), rep("Monkey",26),rep("Mouse",26)))
 p <- ggplot(data = df) + 
-  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
-                   fill = "#f9ecdc", alpha = 0.03)+  
-  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
-                   fill = "#cfe1f7", alpha = 0.03)+
   geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
   ylab("Expression Percentage") +
   xlab("Developmental Stages") +
   scale_shape_manual(values=c(19, 2,23)) +
   scale_color_manual(values=c("#e3a65a","#5a97e3","#e35a97")) +
+  geom_vline(xintercept = 6.5, linetype="dotted") + 
   ggtitle(title)
 p
 }
@@ -222,15 +219,12 @@ hum.pro <- apply(hum.cen, 2, function(x) sum(x[hum.gs])/sum(x))
 mac.pro <- apply(mac.cen, 2, function(x) sum(x[mac.gs])/sum(x))
 df <- data.frame(pro=c(hum.pro, mac.pro)*100, stage=rep(c(1:26),2),Species=c(rep("Human",26), rep("Monkey",26)))
 p <- ggplot(data = df) + 
-  geom_rect(aes(xmin = -Inf, xmax = 6.5, ymin = -Inf, ymax = Inf),
-                   fill = "#f9ecdc", alpha = 0.03)+  
-  geom_rect(aes(xmin = 6.5, xmax = Inf, ymin = -Inf, ymax = Inf),
-                   fill = "#cfe1f7", alpha = 0.03)+
   geom_point(aes(stage,pro,color=Species, shape=Species)) + geom_smooth(aes(stage,pro,group=Species,color=Species),se=FALSE)  + 
   ylab("Expression Percentage") +
   xlab("Developmental Stages") +
   scale_shape_manual(values=c(19, 2)) +
   scale_color_manual(values=c("#e3a65a","#5a97e3")) +
+  geom_vline(xintercept = 6.5, linetype="dotted")+
   ggtitle(title)
 p
 }

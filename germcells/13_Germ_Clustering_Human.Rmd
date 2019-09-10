@@ -65,7 +65,8 @@ FeaturePlot(dge.hum, features.plot = "TNP1", reduction.use = "umap")
 ```
 
 ```{r}
-dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.6)
+dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution= 0.5)
+dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution= 0.6)
 dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.7)
 dge.hum <- FindClusters(object = dge.hum, reduction.type = "pca", dims.use = 1:15, save.SNN = TRUE, resolution = 0.8)
 ```
@@ -86,6 +87,10 @@ cols <- c(
   "#2f737c")
 ```
 
+```{r}
+dge.hum@meta.data$res.0.5.ord <- plyr::mapvalues(dge.hum@meta.data$res.0.5, c(0,6,5,1,3,2,4),c(1,2,3,4,5,6,7))
+DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.5.ord", cols.use = cols[1:7])
+```
 
 
 ```{r fig.width=6, fig.height=4.5}
@@ -94,6 +99,8 @@ TSNEPlot(object = dge.hum, do.return = TRUE, pt.size = 1, group.by = "res.0.6.or
 DimPlot(object = dge.hum, reduction.use = "umap", do.return = TRUE, group.by="res.0.6.ord", cols.use = cols[1:9])
 DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res.0.6.ord", cols.use = cols[1:9])
 ```
+
+
 
 ```{r fig.width=6, fig.height=4.5}
 dge.hum@meta.data$res.0.8.ord.15pc <- plyr::mapvalues(dge.hum@meta.data$res.0.8, c(10,9,1,6,11,8,7,0,2,5,4,3),c(1,2,3,4,5,6,7,8,9,10,11,12))
@@ -104,9 +111,9 @@ DimPlot(object = dge.hum, reduction.use = "pca", do.return = TRUE, group.by="res
 
 ```{r fig.width=6, fig.height=4}
 df <- data.frame(dge.hum@dr$umap@cell.embeddings)
-df <- cbind(df, dge.hum@meta.data$res.0.6.ord)
+df <- cbind(df, dge.hum@meta.data$res.0.5.ord)
 colnames(df) <- c("UMAP1","UMAP2","Cluster")
-ggplot(data = df) + geom_point(aes(x=UMAP1, y=UMAP2, col=Cluster)) + scale_color_manual(values = cols[1:9]) +  guides(colour = guide_legend(override.aes = list(size=5))) + theme_bw() +
+ggplot(data = df) + geom_point(aes(x=UMAP1, y=UMAP2, col=Cluster)) + scale_color_manual(values = cols[1:7]) +  guides(colour = guide_legend(override.aes = list(size=5))) + theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         panel.background = element_rect(colour = "black"),
@@ -122,15 +129,15 @@ ggplot(data = df) + geom_point(aes(x=UMAP1, y=UMAP2, col=Cluster)) + scale_color
 
 ## Cluster centroid and Self-self rank correlation
 ```{r}
-dge.hum.9.cen <- matrix(0, nrow = dim(dge.hum@data)[1], ncol = 9)
-for(i in c(1:9)){
-  hum.i.cells <- dge.hum@cell.names[dge.hum@meta.data$res.0.6.ord==i]
+dge.hum.7.cen <- matrix(0, nrow = dim(dge.hum@data)[1], ncol = 7)
+for(i in c(1:7)){
+  hum.i.cells <- dge.hum@cell.names[dge.hum@meta.data$res.0.5.ord==i]
   hum.i.pro <- apply(exp(dge.hum@data[,hum.i.cells])-1,1,mean)
-  dge.hum.9.cen[,i] <- log(hum.i.pro+1)
+  dge.hum.7.cen[,i] <- log(hum.i.pro+1)
 }
-dge.hum.9.cen.cor <- cor(dge.hum.9.cen, method = "spearman")
-rownames(dge.hum.9.cen.cor) <- c(1:9)
-colnames(dge.hum.9.cen.cor) <- c(1:9)
+dge.hum.7.cen.cor <- cor(dge.hum.7.cen, method = "spearman")
+rownames(dge.hum.7.cen.cor) <- c(1:7)
+colnames(dge.hum.7.cen.cor) <- c(1:7)
 ```
 
 ```{r}
@@ -138,7 +145,7 @@ library(ComplexHeatmap)
 ```
 
 ```{r fig.width=5, fig.height=4}
-Heatmap(dge.hum.9.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
+Heatmap(dge.hum.7.cen.cor, cluster_rows = FALSE, cluster_columns = FALSE)
 ```
 
 
@@ -264,12 +271,12 @@ saveRDS(dge.hum, file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hu
 ###. Call Markers
 
 ```{r}
-dge.hum <- SetIdent(dge.hum, ident.use = dge.hum@meta.data$res.0.6.ord)
+dge.hum <- SetIdent(dge.hum, ident.use = dge.hum@meta.data$res.0.5.ord)
 ```
 
 ```{r}
 hum.markers <- list()
-for(i in c(1:9)){
+for(i in c(1:7)){
   tmp <- FindMarkers(dge.hum, ident.1 = i, min.pct = 0.2, logfc.threshold = 0.7,only.pos = TRUE)
   tmp <- tmp[tmp$p_val_adj < 0.01, ]
   hum.markers[[i]] <- tmp
@@ -282,11 +289,11 @@ library(xlsx)
 
 
 ```{r}
-for(i in c(1:9)){
+for(i in c(1:7)){
 if(i==1){
-  write.xlsx2(x = hum.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_Clusters/Hum_Germ_9Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
+  write.xlsx2(x = hum.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_Clusters/Hum_Germ_7Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
 }else{
-  write.xlsx2(x = hum.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_Clusters/Hum_Germ_9Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
+  write.xlsx2(x = hum.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_Clusters/Hum_Germ_7Clusters_Markers.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
 }
 }
 ```

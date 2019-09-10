@@ -44,4 +44,37 @@ Heatmap(cen.cor, cluster_rows = FALSE, cluster_columns = FALSE,name="Rank correl
 dev.off()
 ```
 
+##Compare Hum SPG 4 cluster with Brad's
 
+```{r}
+gen.int <- intersect(rownames(dge.hum.spg.4.cen), rownames(brad))
+```
+
+```{r}
+hum.spg.int <- dge.hum.spg.4.cen[gen.int,]
+```
+
+```{r}
+brad.cen <- matrix(0, nrow = length(gen.int), ncol = length(unique(brad_label$States)))
+for(i in c(0:4)){
+  brad.cen[,i+1] = apply(brad.norm[gen.int, rownames(brad_label)[brad_label$States==i]],1,mean)
+}
+```
+
+```{r}
+colnames(brad.cen) <- c(0:4)
+colnames(hum.spg.int) <- c(1:4)
+```
+
+```{r}
+cen.cor <- cor(hum.spg.int, brad.cen, method = "spearman")
+cen.cor <- round(cen.cor, 2)
+```
+
+```{r fig.width=5, fig.height=4}
+#pdf("~/storage/HumanMacaqueMouseCompAnaysis/brad_data/CompareWithBrad.pdf",width = 5, height = 4)
+Heatmap(cen.cor, cluster_rows = FALSE, cluster_columns = FALSE,name="Rank correlation",cell_fun = function(j, i, x, y, w, h, col) {
+        grid.text(cen.cor[i, j], x, y)
+    })
+#dev.off()
+```
