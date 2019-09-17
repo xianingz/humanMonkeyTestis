@@ -21,36 +21,58 @@ mou.spg.cen.6.std <- t(apply(mou.spg.cen.6.log, 1, function(x) (x-mean(x))/sd(x)
 ``` 
 
 Select HVGs for each species.
+
+plot the density.
 ```{r fig.width=5,fig.height=5}
 g.mean <- apply(hum.spg.cen.6.log,1,mean)
 g.var <- apply(hum.spg.cen.6.log,1,var)
-plot(g.mean, g.var/g.mean, cex=0.5)
-hum.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
-abline(h=0.1)
-abline(v=0.2)
+
+g.var <- g.var[g.mean!=0]
+g.mean <- g.mean[g.mean!=0]
+hum.spg.hvg <- names(g.mean)[g.mean > 0.4 & g.var/g.mean > 0.1]
 length(hum.spg.hvg)
+hum.gen <- data.frame(mean = g.mean, varmean = g.var/g.mean)
+hum.gen$den <- get_density(hum.gen$mean, hum.gen$varmean, n=100)
+
+p <- ggplot(hum.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Human HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.1) + geom_vline(xintercept = 0.4)
+p1 <- ggMarginal(p, type="density")
+grid.arrange(p1, ncol=1)
 ```
+
+
 
 ```{r fig.width=5,fig.height=5}
 g.mean <- apply(mac.spg.cen.6.log,1,mean)
 g.var <- apply(mac.spg.cen.6.log,1,var)
-plot(g.mean, g.var/g.mean, cex=0.5)
-mac.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
-abline(h=0.1)
-abline(v=0.2)
+g.var <- g.var[g.mean!=0]
+g.mean <- g.mean[g.mean!=0]
+
+mac.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.15]
 length(mac.spg.hvg)
+mac.gen <- data.frame(mean = g.mean, varmean = g.var/g.mean)
+mac.gen$den <- get_density(mac.gen$mean, mac.gen$varmean, n=100)
+
+p <- ggplot(mac.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Monkey HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.15) + geom_vline(xintercept = 0.2)
+p2 <- ggMarginal(p, type="density")
+grid.arrange(p2, ncol=1)
 ```
 
 ```{r fig.width=5,fig.height=5}
 g.mean <- apply(mou.spg.cen.6.log,1,mean)
 g.var <- apply(mou.spg.cen.6.log,1,var)
-plot(g.mean, g.var/g.mean, cex=0.5)
-mou.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.1]
-abline(h=0.1)
-abline(v=0.2)
-length(mou.spg.hvg)
-```
+g.var <- g.var[g.mean!=0]
+g.mean <- g.mean[g.mean!=0]
 
+mou.spg.hvg <- names(g.mean)[g.mean > 0.2 & g.var/g.mean > 0.08]
+length(mou.spg.hvg)
+
+mou.gen <- data.frame(mean = g.mean, varmean = g.var/g.mean)
+mou.gen$den <- get_density(mou.gen$mean, mou.gen$varmean, n=100)
+
+p <- ggplot(mou.gen) + geom_point(aes(x=mean, y=varmean, color = log(den+1)),size=0.5) + scale_color_viridis()+ ggtitle("Mouse HVGs") + theme(legend.position="none") + xlab("Mean") + ylab("Variation/Mean") + theme(plot.title = element_text(hjust = 0.5, face = "bold")) + geom_hline(yintercept = 0.08) + geom_vline(xintercept = 0.2)
+p2 <- ggMarginal(p, type="density")
+grid.arrange(p2, ncol=1)
+```
 
 ##. Asking for 6 clusters from kmeans
 ```{r}
@@ -121,6 +143,7 @@ dr = Heatmap(hum.spg.cen.6.std[names(which(hum.spg.kmean$cluster==i)),], cluster
 draw(dr)
 }
 ```
+
 ```{r}
 colnames(mac.spg.cen.6.std) <- c(1:6)
 set.seed(123)

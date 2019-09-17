@@ -1,0 +1,147 @@
+
+Major cell type ids
+```{r}
+hum.ids <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/HumanMerged4-1235-NoC5-NoC1_MajorGermCelltypes_label_Qianyi.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+mac.ids <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/Monkey-5subjects-NoC1-NoC7-No10pctMT_MajorGermCelltypes_label_Qianyi.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+```
+
+escapee genes
+```{r}
+hum.escapee <- c(
+"AKAP14",
+"AKAP4",
+"CYLC1",
+"DDX3X",
+"DDX3Y",
+"DDX53",
+"DYNLT3",
+"EIF1AX",
+"HMGB3",
+"IL13RA2",
+"MAP7D3",
+"OFD1",
+"PIH1D3",
+"PRDX4",
+"RIBC1",
+"RPGR",
+"SPANXN3",
+"SPANXN5",
+"SSR4",
+"SYAP1",
+"UPF3B",
+"VCX2",
+"VCX3B"
+)
+
+mac.escapee <- c(
+"AKAP14",
+"AKAP4",
+"CYLC1",
+"DDX3X",
+"DDX3Y",
+"ENSMMUG00000008224",
+"ENSMMUG00000010883",
+"ENSMMUG00000032363",
+"ENSMMUG00000032410",
+"ENSMMUG00000043616",
+"FHL1",
+"MAP7D3",
+"PPP1R2C",
+"PRDX4",
+"RIBC1",
+"RPGR",
+"SSR4",
+"TSPAN6",
+"UPF3B"
+)
+```
+
+###. Raw counts data for three species
+```{r}
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/human_merged1235_20cpg15upg.robj")
+dge.hum.raw <- dge@raw.data
+rm(dge)
+load("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/mac_merged9_nospikeincells.Robj")
+dge.mac.raw <- dge@raw.data
+rm(dge)
+#dge.mou.raw <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/countsOriginalData/GSE112393_MergedAdultMouseST25_DGE.txt",header = TRUE, row.names = 1,sep="\t")
+```
+
+
+```{r}
+hum.scy <- hum.ids$V1[hum.ids$V2=="Spermatocyte"]
+hum.scy <- str_replace_all(hum.scy,"Human1.1","Human1")
+hum.scy <- str_replace_all(hum.scy,"Human1.2","Human2")
+hum.scy <- str_replace_all(hum.scy,"Human1.3","Human3")
+hum.scy <- str_replace_all(hum.scy,"Human1.4","Human4")
+hum.scy <- str_replace_all(hum.scy,"Human5", "Human11")
+hum.scy <- str_replace_all(hum.scy,"Human1.5","Human5")
+hum.scy <- str_replace_all(hum.scy,"Human2.1","Human6")
+hum.scy <- str_replace_all(hum.scy,"Human2.2","Human7")
+hum.scy <- str_replace_all(hum.scy,"Human3.1","Human8")
+hum.scy <- str_replace_all(hum.scy,"Human3.2","Human9")
+hum.escape.expr <- dge.hum.raw[hum.escapee, hum.scy]
+```
+
+```{r}
+mac.scy <- mac.ids$V1[mac.ids$V2=="Spermatocyte"]
+mac.scy <- str_replace_all(mac.scy,"Monkey1.1","Monkey1")
+mac.scy <- str_replace_all(mac.scy,"Monkey2", "Monkey3")
+mac.scy <- str_replace_all(mac.scy,"Monkey1.2","Monkey2")
+mac.scy <- str_replace_all(mac.scy,"Monkey3.1","Monkey4")
+mac.scy <- str_replace_all(mac.scy,"Monkey3.2","Monkey5")
+mac.scy <- str_replace_all(mac.scy,"Monkey4.1","Monkey6")
+mac.scy <- str_replace_all(mac.scy,"Monkey4.2","Monkey7")
+mac.scy <- str_replace_all(mac.scy,"Monkey5.1","Monkey8")
+mac.scy <- str_replace_all(mac.scy,"Monkey5.2","Monkey9")
+mac.escape.expr <- dge.mac.raw[mac.escapee, mac.scy]
+```
+
+```{r}
+hum.escape.perc <- apply(hum.escape.expr,1,function(x) mean(x>0))
+mac.escape.perc <- apply(mac.escape.expr,1,function(x) mean(x>0))
+```
+
+```{r}
+hum.escape.perc
+mac.escape.perc
+```
+
+All chrX genes
+```{r}
+hum.chrx.genes <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/chrXInactivation/humanChrXgenes",header=FALSE,stringsAsFactors = FALSE)
+hum.chrx.genes <- intersect(hum.chrx.genes$V1, rownames(dge.hum.raw))
+mac.chrx.genes <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/chrXInactivation/monkeyChrXgenes",header=FALSE,stringsAsFactors = FALSE)
+mac.chrx.genes <- intersect(mac.chrx.genes$V1, rownames(dge.mac.raw))
+```
+
+
+```{r}
+mac.spc.expr <- dge.mac.raw[, mac.scy]
+hum.spc.expr <- dge.hum.raw[, hum.scy]
+```
+
+```{r}
+hum.spc.expr.norm <- apply(hum.spc.expr,2,function(x) x/sum(x)*1e4)
+mac.spc.expr.norm <- apply(mac.spc.expr,2,function(x) x/sum(x)*1e4)
+```
+
+```{r}
+hum.spc.perc <- apply(hum.spc.expr.norm,1,function(x) mean(x==0))
+mac.spc.perc <- apply(mac.spc.expr.norm,1,function(x) mean(x==0))
+hum.spc.mean <- apply(hum.spc.expr.norm,1,function(x) mean(x))
+mac.spc.mean <- apply(mac.spc.expr.norm,1,function(x) mean(x))
+```
+
+```{r fig.width=5, fig.height=5}
+plot(log(hum.spc.mean+1), hum.spc.perc, pch=16, cex=0.5, xlab="log(MeanExpression+1)", ylab="%zeros")
+points(log(hum.spc.mean[hum.chrx.genes]+1), hum.spc.perc[hum.chrx.genes], col="grey")
+points(log(hum.spc.mean[hum.escapee]+1), hum.spc.perc[hum.escapee], col="red")
+```
+
+
+```{r fig.width=5, fig.height=5}
+plot(log(mac.spc.mean+1), mac.spc.perc, pch=16, cex=0.5, xlab="log(MeanExpression+1)", ylab="%zeros")
+points(log(mac.spc.mean[mac.chrx.genes]+1), mac.spc.perc[mac.chrx.genes], col="grey")
+points(log(mac.spc.mean[mac.escapee]+1), mac.spc.perc[mac.escapee], col="red")
+```

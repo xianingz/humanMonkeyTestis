@@ -420,7 +420,7 @@ write.table(marker1over2, file = "~/storage/HumanMacaqueMouseCompAnaysis/interda
 
 spg.raw file used below are files that removed cluster 7-8 in SPG CCA clusterign 
 ```{r}
-dge.hum.spg <- CreateSeuratObject(raw.data = dge.hum.spg.raw)
+dge.hum.spg <- CreateSeuratObject(raw.data = dge.hum.spg.raw[,spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6) & spg.cca@meta.data$species=="Human"]])
 dge.hum.spg <- NormalizeData(object = dge.hum.spg, normalization.method = "LogNormalize", 
     scale.factor = 10000)
 dge.hum.spg <- ScaleData(object = dge.hum.spg,vars.to.regress = c("nUMI"))
@@ -437,6 +437,7 @@ for(i in c(1:6)){
   hum.spg.markers[[i]] <- FindMarkers(dge.hum.spg, ident.1 = i, logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
 }
 ```
+
 ```{r}
 for(i in c(1:6)){
 if(i==1){
@@ -448,7 +449,7 @@ if(i==1){
 ```
 
 ```{r}
-dge.mac.spg <- CreateSeuratObject(raw.data = dge.mac.spg.raw)
+dge.mac.spg <- CreateSeuratObject(raw.data = dge.mac.spg.raw[,spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6) & spg.cca@meta.data$species=="Monkey"]])
 dge.mac.spg <- NormalizeData(object = dge.mac.spg, normalization.method = "LogNormalize", 
     scale.factor = 10000)
 dge.mac.spg <- ScaleData(object = dge.mac.spg,vars.to.regress = c("nUMI"))
@@ -460,7 +461,9 @@ mac.spg.markers <- list()
 for(i in c(1:6)){
   mac.spg.markers[[i]] <- FindMarkers(dge.mac.spg, ident.1 = i, logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
 }
+```
 
+```{r}
 for(i in c(1:6)){
 if(i==1){
   write.xlsx2(x = mac.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mac_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
@@ -471,7 +474,7 @@ if(i==1){
 ```
 
 ```{r}
-dge.mou.spg <- CreateSeuratObject(raw.data = dge.mou.spg.raw)
+dge.mou.spg <- CreateSeuratObject(raw.data = dge.mou.spg.raw[,spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6) & spg.cca@meta.data$species=="Mouse"]])
 dge.mou.spg <- NormalizeData(object = dge.mou.spg, normalization.method = "LogNormalize", 
     scale.factor = 10000)
 dge.mou.spg <- ScaleData(object = dge.mou.spg,vars.to.regress = c("nUMI"))
@@ -483,7 +486,9 @@ mou.spg.markers <- list()
 for(i in c(1:6)){
   mou.spg.markers[[i]] <- FindMarkers(dge.mou.spg, ident.1 = i, logfc.threshold = 0.25, min.pct = 0.1, only.pos = TRUE)
 }
+```
 
+```{r}
 for(i in c(1:6)){
 if(i==1){
   write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = FALSE)
@@ -491,6 +496,207 @@ if(i==1){
   write.xlsx2(x = mou.spg.markers[[i]], file = "/home/xianingz/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/SPG_mou_6Clusters_Markers_allGene_lgfc0.25pct10.xlsx", sheetName = paste0("Cluster", i), col.names = TRUE, row.names = TRUE, append = TRUE)
 }
 }
+```
+
+```{r}
+hum.spg.markers.df <- do.call("rbind", hum.spg.markers)
+mac.spg.markers.df <- do.call("rbind", mac.spg.markers)
+mou.spg.markers.df <- do.call("rbind", mou.spg.markers)
+hum.spg.stages <- c()
+mac.spg.stages <- c()
+mou.spg.stages <- c()
+for(i in c(1:6)){
+  hum.spg.stages <- c(hum.spg.stages, rep(i, dim(hum.spg.markers[[i]])[1]))
+  mac.spg.stages <- c(mac.spg.stages, rep(i, dim(mac.spg.markers[[i]])[1]))
+  mou.spg.stages <- c(mou.spg.stages, rep(i, dim(mou.spg.markers[[i]])[1]))
+}
+hum.spg.markers.df$stages <- hum.spg.stages
+mac.spg.markers.df$stages <- mac.spg.stages
+mou.spg.markers.df$stages <- mou.spg.stages
+```
+
+```{r}
+hum.spg.markers.df <- hum.spg.markers.df[hum.spg.markers.df$p_val_adj < 0.01,]
+mac.spg.markers.df <- mac.spg.markers.df[mac.spg.markers.df$p_val_adj < 0.01,]
+mou.spg.markers.df <- mou.spg.markers.df[mou.spg.markers.df$p_val_adj < 0.01,]
+```
+
+```{r}
+hum.spg.markers.df$gene <- rownames(hum.spg.markers.df)
+mac.spg.markers.df$gene <- rownames(mac.spg.markers.df)
+mou.spg.markers.df$gene <- rownames(mou.spg.markers.df)
+```
+
+```{r}
+hum.spg.marker.orth <- hum.spg.markers.df[hum.spg.markers.df$gene %in% humMacMouOrth.1to1.in$external_gene_name.x,]
+hum.spg.marker.orth$humorth <- hum.spg.marker.orth$gene
+
+mac.spg.marker.orth <- mac.spg.markers.df[mac.spg.markers.df$gene %in% humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,]
+rownames(humMacMouOrth.1to1.in) = humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name
+mac.spg.marker.orth$humorth <- humMacMouOrth.1to1.in[mac.spg.marker.orth$gene,]$external_gene_name.x
+
+mou.spg.marker.orth <- mou.spg.markers.df[mou.spg.markers.df$gene %in% humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,]
+rownames(humMacMouOrth.1to1.in) = humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name
+mou.spg.marker.orth$humorth <- humMacMouOrth.1to1.in[mou.spg.marker.orth$gene,]$external_gene_name.x
+```
+
+
+hummac hum
+```{r}
+spg.hum.mac.hum.clus.num <- c()
+for(i in c(1:6)){
+  a = length(intersect(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i], mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i]))
+  b = length(intersect(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i], mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages!=i]))
+  c = length(setdiff(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i], mac.spg.marker.orth$humorth))
+  d = length(hum.spg.markers.df$gene[hum.spg.markers.df$stages==i])-length(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i])
+  spg.hum.mac.hum.clus.num <- cbind(spg.hum.mac.hum.clus.num,c(a,b,c,d))
+}
+spg.hum.mac.hum.clus.num
+```
+
+hummac mac
+```{r}
+spg.hum.mac.mac.clus.num <- c()
+for(i in c(1:6)){
+  a = length(intersect(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i], hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i]))
+  b = length(intersect(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i], hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages!=i]))
+  c = length(setdiff(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i], hum.spg.marker.orth$humorth))
+  d = length(mac.spg.markers.df$gene[mac.spg.markers.df$stages==i])-length(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i])
+  spg.hum.mac.mac.clus.num <- cbind(spg.hum.mac.mac.clus.num,c(a,b,c,d))
+}
+spg.hum.mac.mac.clus.num
+```
+
+```{r}
+hummac.spg.rat.3 <- apply(spg.hum.mac.hum.clus.num,2,function(x) x/sum(x[c(1:3)]))[c(1:3),]/2 + apply(spg.hum.mac.mac.clus.num,2,function(x) x/sum(x[c(1:3)]))[c(1:3),]/2
+hummac.spg.rat.4 <- apply(spg.hum.mac.hum.clus.num,2,function(x) x/sum(x))/2 + apply(spg.hum.mac.mac.clus.num,2,function(x) x/sum(x))/2
+hummac.spg.rat.3
+hummac.spg.rat.4
+```
+
+
+hummou hum
+```{r}
+spg.hum.mou.hum.clus.num <- c()
+for(i in c(1:6)){
+  a = length(intersect(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i], mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i]))
+  b = length(intersect(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i], mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages!=i]))
+  c = length(setdiff(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i], mou.spg.marker.orth$humorth))
+  d = length(hum.spg.markers.df$gene[hum.spg.markers.df$stages==i])-length(hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i])
+  spg.hum.mou.hum.clus.num <- cbind(spg.hum.mou.hum.clus.num,c(a,b,c,d))
+}
+spg.hum.mou.hum.clus.num
+```
+
+hummou mou
+```{r}
+spg.hum.mou.mou.clus.num <- c()
+for(i in c(1:6)){
+  a = length(intersect(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i], hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages==i]))
+  b = length(intersect(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i], hum.spg.marker.orth$humorth[hum.spg.marker.orth$stages!=i]))
+  c = length(setdiff(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i], hum.spg.marker.orth$humorth))
+  d = length(mou.spg.markers.df$gene[mou.spg.markers.df$stages==i])-length(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i])
+  spg.hum.mou.mou.clus.num <- cbind(spg.hum.mou.mou.clus.num,c(a,b,c,d))
+}
+spg.hum.mou.mou.clus.num
+```
+
+```{r}
+hummou.spg.rat.3 <- apply(spg.hum.mou.hum.clus.num,2,function(x) x/sum(x[c(1:3)]))[c(1:3),]/2 + apply(spg.hum.mou.mou.clus.num,2,function(x) x/sum(x[c(1:3)]))[c(1:3),]/2
+hummou.spg.rat.4 <- apply(spg.hum.mou.hum.clus.num,2,function(x) x/sum(x))/2 + apply(spg.hum.mou.mou.clus.num,2,function(x) x/sum(x))/2
+hummou.spg.rat.3
+hummou.spg.rat.4
+```
+
+macmou mac
+```{r}
+spg.mac.mou.mac.clus.num <- c()
+for(i in c(1:6)){
+  a = length(intersect(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i], mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i]))
+  b = length(intersect(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i], mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages!=i]))
+  c = length(setdiff(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i], mou.spg.marker.orth$humorth))
+  d = length(mac.spg.markers.df$gene[mac.spg.markers.df$stages==i])-length(mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i])
+  spg.mac.mou.mac.clus.num <- cbind(spg.mac.mou.mac.clus.num,c(a,b,c,d))
+}
+spg.mac.mou.mac.clus.num
+```
+
+macmou mou
+```{r}
+spg.mac.mou.mou.clus.num <- c()
+for(i in c(1:6)){
+  a = length(intersect(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i], mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages==i]))
+  b = length(intersect(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i], mac.spg.marker.orth$humorth[mac.spg.marker.orth$stages!=i]))
+  c = length(setdiff(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i], mac.spg.marker.orth$humorth))
+  d = length(mou.spg.markers.df$gene[mou.spg.markers.df$stages==i])-length(mou.spg.marker.orth$humorth[mou.spg.marker.orth$stages==i])
+  spg.mac.mou.mou.clus.num <- cbind(spg.mac.mou.mou.clus.num,c(a,b,c,d))
+}
+spg.mac.mou.mou.clus.num
+```
+
+```{r}
+macmou.spg.rat.3 <- apply(spg.mac.mou.mac.clus.num,2,function(x) x/sum(x[c(1:3)]))[c(1:3),]/2 + apply(spg.mac.mou.mou.clus.num,2,function(x) x/sum(x[c(1:3)]))[c(1:3),]/2
+macmou.spg.rat.4 <- apply(spg.mac.mou.mac.clus.num,2,function(x) x/sum(x))/2 + apply(spg.mac.mou.mou.clus.num,2,function(x) x/sum(x))/2
+macmou.spg.rat.3
+macmou.spg.rat.4
+```
+
+
+```{r}
+hummac.spg.rat.3
+hummou.spg.rat.3
+macmou.spg.rat.3
+```
+
+```{r}
+hummac.spg.rat.4
+hummou.spg.rat.4
+macmou.spg.rat.4
+```
+```{r}
+stakbar3 <- function(dat){
+colnames(dat) <- c(1:6)
+rownames(dat) <- c("In Phase", "Shifted", "Unique")
+dat <- data.frame(t(dat))
+dat$Cluster <- c(1:6)
+df <- melt(dat, id.var="Cluster")
+p <- ggplot(df, aes(x = Cluster, y = value, fill = variable)) + 
+  geom_bar(stat = "identity",color = "grey40",width = 1, alpha=0.8) + 
+  scale_x_continuous(breaks=c(1:6)) + 
+  theme(axis.title.y=element_blank(),
+        legend.title=element_blank()) + 
+  scale_fill_manual(values = c("#323232","#767676","#cecece"))
+print(p)
+}
+```
+
+```{r fig.width=5, fig.height=4.5}
+stakbar3(hummac.spg.rat.3)
+stakbar3(hummou.spg.rat.3)
+stakbar3(macmou.spg.rat.3)
+```
+
+```{r}
+stakbar4 <- function(dat){
+colnames(dat) <- c(1:6)
+rownames(dat) <- c("In Phase", "Shifted", "Unique (1-1-1 Ortholog)", "Unique (Non 1-1-1 Ortholog)")
+dat <- data.frame(t(dat))
+dat$Cluster <- c(1:6)
+df <- melt(dat, id.var="Cluster")
+p <- ggplot(df, aes(x = Cluster, y = value, fill = variable)) + 
+  geom_bar(stat = "identity",color = "grey40",width = 1, alpha=0.8) + 
+  scale_x_continuous(breaks=c(1:6)) + 
+  theme(axis.title.y=element_blank(),
+        legend.title=element_blank()) + 
+  scale_fill_manual(values = c("#5a5a5a","#737373","#8d8d8d","#a6a6a6"))
+print(p)
+}
+```
+
+```{r fig.width=6, fig.height=4.5}
+stakbar4(hummac.spg.rat.4)
+stakbar4(hummou.spg.rat.4)
+stakbar4(macmou.spg.rat.4)
 ```
 
 Plot markers
@@ -503,6 +709,8 @@ markers <- c("THY1", "SALL4", "PLZF", "ZBTB16", "ID4", "GFRA1", "ITGA6", "EPCAM"
 humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
 spg.cca <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/spg.cca.rds")
 ```
+
+
 
 
 ```{r}
@@ -872,6 +1080,67 @@ dev.off()
 
 
 ```{r}
+plotfeature_spe <- function(gene, cells.use=NULL){
+feature=features.plot=gene
+
+dim.1 = 1; dim.2 = 2; pt.size = 1;
+pch.use = 16; reduction.use = "tsne";
+use.imputed = FALSE; no.axes = TRUE; no.legend = FALSE
+
+cells.use <- set.ifnull(cells.use, spg.cca@cell.names[spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
+dim.code <- translate.dim.code(reduction.use)
+dim.codes <- paste(dim.code, c(dim.1, dim.2), sep = "")
+data.plot <- as.data.frame(spg.cca@dr$tsne@cell.embeddings[cells.use,])
+
+x1 <- paste(dim.code, dim.1, sep = "")
+x2 <- paste(dim.code, dim.2, sep = "")
+
+data.plot$x <- data.plot[cells.use, x1]
+data.plot$y <- data.plot[cells.use, x2]
+data.plot$pt.size <- pt.size
+data.use <- data.frame(t(spg.cca@meta.data[cells.use,feature]))
+rownames(data.use)=feature
+
+data.gene0 <- na.omit(data.frame(data.use[feature, ]))
+data.plot$gene <- t(data.gene0)
+
+st6<- data.plot
+st6<-st6[order(st6[,6]),]
+z<-st6[,6]
+
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/plots/newplots/spg.cca","_",feature,"_40-100redblue.jpeg"),height=850,width=800,res=300)
+par(mar=c(0.5,0.5,2,0.5),mgp=c(1,0.5,0))
+z<-st6[,6]
+zcolor <- redblue100.alpha[40:100][(z - min(z))/diff(range(z))*60 + 1]
+plot(st6[,1],st6[,2], col=zcolor,pch=19,cex=0.3,cex.main=1.5,axes=F,main=features.plot,xlab="",ylab="")
+dev.off()
+}
+```
+
+```{r}
+spg.cca@meta.data$VCX <- 0
+spg.cca@meta.data[colnames(dge.hum.spg.full@data),]$VCX <- dge.hum.spg.full@data["VCX",]
+plotfeature_spe("VCX")
+```
+
+```{r}
+spg.cca@meta.data$VCX2 <- 0
+spg.cca@meta.data[colnames(dge.hum.spg.full@data),]$VCX2 <- dge.hum.spg.full@data["VCX2",]
+plotfeature_spe("VCX2")
+```
+```{r}
+spg.cca@meta.data$VCX3A <- 0
+spg.cca@meta.data[colnames(dge.hum.spg.full@data),]$VCX3A <- dge.hum.spg.full@data["VCX3A",]
+plotfeature_spe("VCX3A")
+```
+
+```{r}
+spg.cca@meta.data$VCX3B <- 0
+spg.cca@meta.data[colnames(dge.hum.spg.full@data),]$VCX3B <- dge.hum.spg.full@data["VCX3B",]
+plotfeature_spe("VCX3B")
+```
+
+```{r}
 plotgene_spe("NANOS3", cells.use = spg.cca@cell.names[spg.cca@meta.data$species=="Mouse" & spg.cca@meta.data$res.0.6.ord %in% c(1:6)])
 ```
 
@@ -966,20 +1235,22 @@ ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=
 
 ```{r}
 markers <- c("TSPAN33")
-markers <- c("NANOS3")
+#markers <- c("NANOS3")
+#markers <- c("FMR1NB")
+#markers <- c("PIWIL4")
 for(i in markers){
   jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Human.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
-p <- vlnplot_gg(spg.cca.hum, i, adjust = 2)
+p <- vlnplot_gg(spg.cca.hum, i, adjust = 3)
 print(p)
 dev.off()
 
   jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Monkey.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
-p <- vlnplot_gg(spg.cca.mac, i, adjust = 2)
+p <- vlnplot_gg(spg.cca.mac, i, adjust = 3)
 print(p)
 dev.off()
 
   jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Mouse.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
-p <- vlnplot_gg(spg.cca.mou, i, adjust = 2)
+p <- vlnplot_gg(spg.cca.mou, i, adjust = 3)
 print(p)
 dev.off()
 }
@@ -987,7 +1258,8 @@ dev.off()
 
 
 ```{r}
-markers <- c("GFRA1","ZBTB16","LIN28A","ID4","ITGA6","UCHL1","STRA8","MKI67","DMRT1","SYCP2","HORMAD1","MEIOB","LY6K","TEX101","PIWIL4","MORC1","TCF3","CDK17","FMR1","L1TD1")
+markers <- c("FMR1NB", "VCX", "VCX2", "VCX3A", "VCX3B","GFRA1","ZBTB16","LIN28A","ID4","ITGA6","UCHL1","STRA8","MKI67","DMRT1","SYCP2","HORMAD1","MEIOB","LY6K","TEX101","PIWIL4","MORC1","TCF3","CDK17","FMR1","L1TD1")
+markers <- c("FMR1NB")
 for(i in markers){
 jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Mouse.spg.cca","_",i,"_violin.jpeg"),height=850,width=800,res=300)
 p <- VlnPlot(spg.cca.mou, features.plot = i, ident.include = c(1:6), cols.use = cols, point.size.use = 0, size.x.use = 0)
@@ -1005,6 +1277,51 @@ print(p)
 dev.off()
 }
 ```
+
+
+```{r}
+hum.markers <- c("VCX", "VCX2", "VCX3A", "VCX3B")
+mac.markers <- c("ENSMMUG00000047834","ENSMMUG00000039934","ENSMMUG00000043376")
+```
+
+Add hum.markers for human
+```{r}
+spg.cca.hum@meta.data$VCX <- 0
+spg.cca.hum@meta.data[colnames(dge.hum.spg.full@data),]$VCX <- dge.hum.spg.full@data["VCX",]
+spg.cca.hum@meta.data$VCX2 <- 0
+spg.cca.hum@meta.data[colnames(dge.hum.spg.full@data),]$VCX2 <- dge.hum.spg.full@data["VCX2",]
+spg.cca.hum@meta.data$VCX3A <- 0
+spg.cca.hum@meta.data[colnames(dge.hum.spg.full@data),]$VCX3A <- dge.hum.spg.full@data["VCX3A",]
+spg.cca.hum@meta.data$VCX3B <- 0
+spg.cca.hum@meta.data[colnames(dge.hum.spg.full@data),]$VCX3B <- dge.hum.spg.full@data["VCX3B",]
+```
+
+```{r fig.width=3, fig.height=2.5}
+vlnplot_gg <- function(object, gene, adjust=1){
+cols <- c("#477900",
+"#9378ff",
+"#01ce74",
+"#ff2b85",
+"#b0d266",
+"#733697",
+"#ff9c1d",
+"#0190c8",
+"#ffa19e")
+df <- data.frame(expr = object@meta.data[,gene], ident = object@meta.data$res.0.6.ord)
+df <- df[df$ident %in% c(1:6),]
+ggplot(df, aes(x=ident,y=expr, fill=ident))+geom_violin(scale = "width", adjust=adjust) + ylab("") + xlab("") + ggtitle(gene)  + scale_fill_manual(values = cols)+ theme(legend.position = "none")
+}
+```
+
+```{r}
+for(i in hum.markers){
+jpeg(paste0("~/storage/HumanMacaqueMouseCompAnaysis/interdata/SPG_markers/violin/Human.spg.cca_",i,"_violin.jpeg"),height=850,width=800,res=300)
+p <- vlnplot_gg(spg.cca.hum, i, adjust = 1)
+print(p)
+dev.off()
+}
+```
+
 
 Add KIT for humand and mouse
 ```{r}

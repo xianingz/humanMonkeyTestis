@@ -529,6 +529,10 @@ library(ggplot2)
 ```
 
 
+```{r}
+cols <- c("1d91bf", "#43b6c4", "#82cdbc", "#c8eab7")
+```
+
 
 ```{r}
 stakbar <- function(text){
@@ -543,7 +547,7 @@ p <- ggplot(df, aes(x = Cluster, y = value, fill = variable)) +
   scale_x_continuous(breaks=c(1:6)) + 
   theme(axis.title.y=element_blank(),
         legend.title=element_blank()) + 
-  scale_fill_brewer(palette="Dark2")
+  scale_fill_manual(values = cols[2:4])
 print(p)
 }
 ```

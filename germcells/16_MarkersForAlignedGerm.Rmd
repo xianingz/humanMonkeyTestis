@@ -1,0 +1,310 @@
+#Germ 20 aligned cluster markers
+```{r}
+hum.20.lab <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/Hum.20.cells.labels.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+mac.20.lab <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/Mac.20.cells.labels.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+mou.20.lab <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/Mou.20.cells.labels.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+```
+
+
+```{r}
+dge.hum.germ.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.hum.germ.raw.rds")
+dge.mac.germ.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mac.germ.raw.rds")
+dge.mou.germ.raw <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/dge.mou.germ.raw.rds")
+```
+
+```{r}
+humMacMouOrth.1to1.in <- readRDS("~/storage/HumanMacaqueMouseCompAnaysis/interdata/humMacMouOrth.1to1.in.Rds")
+dge.germ.raw <- cbind(dge.hum.germ.raw[humMacMouOrth.1to1.in$external_gene_name.x,hum.20.lab$cells], dge.mac.germ.raw[humMacMouOrth.1to1.in$mmulatta_homolog_associated_gene_name,mac.20.lab$cells], dge.mou.germ.raw[humMacMouOrth.1to1.in$mmusculus_homolog_associated_gene_name,mou.20.lab$cells])
+```
+
+```{r}
+dge.germ <- CreateSeuratObject(raw.data = dge.germ.raw)
+dge.germ <- NormalizeData(object = dge.germ, normalization.method = "LogNormalize", 
+    scale.factor = 10000)
+```
+
+```{r}
+dge.germ@meta.data$species <- c(rep("Human",dim(hum.20.lab)[1]), rep("Monkey",dim(mac.20.lab)[1]), rep("Mouse", dim(mou.20.lab)[1]))
+dge.germ@meta.data$clus <- c(hum.20.lab$labels, mac.20.lab$labels, mou.20.lab$labels)
+dge.germ <- SetIdent(dge.germ, ident.use = dge.germ@meta.data$clus)
+```
+
+```{r}
+germ.markers.20clus <- list()
+for(i in c(1:20)){
+  if(i==1){
+    germ.markers.20clus[[1]] <- FindConservedMarkers(dge.germ, ident.1 = 1, ident.2 = 2, grouping.var = "species", logfc.threshold = 0.2, min.pct = 0.1, only.pos = TRUE)
+  }else if(i==20){
+    germ.markers.20clus[[20]] <- FindConservedMarkers(dge.germ, ident.1 = 20, ident.2 = 19, grouping.var = "species", logfc.threshold = 0.2, min.pct = 0.1, only.pos = TRUE)
+  }else{
+    germ.markers.20clus[[i]] <- FindConservedMarkers(dge.germ, ident.1 = i, ident.2 = c(i-1,i+1),grouping.var = "species", logfc.threshold = 0.2, min.pct = 0.1, only.pos = TRUE)
+  }
+}
+```
+
+```{r}
+germ.markers.all.20clus <- list()
+for(i in c(1:20)){
+  if(i==1){
+    germ.markers.all.20clus[[1]] <- FindMarkers(dge.germ, ident.1 = 1, ident.2 = 2, grouping.var = "species", logfc.threshold = 0.15, min.pct = 0.1, only.pos = TRUE)
+  }else if(i==20){
+    germ.markers.all.20clus[[20]] <- FindMarkers(dge.germ, ident.1 = 20, ident.2 = 19, grouping.var = "species", logfc.threshold = 0.15, min.pct = 0.1, only.pos = TRUE)
+  }else{
+    germ.markers.all.20clus[[i]] <- FindMarkers(dge.germ, ident.1 = i, ident.2 = c(i-1,i+1),grouping.var = "species", logfc.threshold = 0.15, min.pct = 0.1, only.pos = TRUE)
+  }
+}
+```
+
+```{r}
+germ.markers.flank.20clus <- germ.markers.all.20clus
+```
+
+```{r}
+dge.germ.20.cen <- matrix(0, nrow = dim(dge.germ@data)[1], ncol = 20)
+for(i in c(1:20)){
+  cat(i)
+  i.cells <- dge.germ@cell.names[dge.germ@meta.data$clus==i]
+  i.pro <- apply(exp(dge.germ@data[,i.cells])-1,1,mean)
+  dge.germ.20.cen[,i] <- log(i.pro+1)
+}
+```
+
+```{r}
+dge.hum.germ.20.cen <- matrix(0, nrow = dim(dge.germ@data)[1], ncol = 20)
+for(i in c(1:20)){
+  cat(i)
+  i.cells <- dge.germ@cell.names[dge.germ@meta.data$clus==i & dge.germ@meta.data$species=="Human"]
+  i.pro <- apply(exp(dge.germ@data[,i.cells])-1,1,mean)
+  dge.hum.germ.20.cen[,i] <- log(i.pro+1)
+}
+
+dge.mac.germ.20.cen <- matrix(0, nrow = dim(dge.germ@data)[1], ncol = 20)
+for(i in c(1:20)){
+  cat(i)
+  i.cells <- dge.germ@cell.names[dge.germ@meta.data$clus==i & dge.germ@meta.data$species=="Monkey"]
+  i.pro <- apply(exp(dge.germ@data[,i.cells])-1,1,mean)
+  dge.mac.germ.20.cen[,i] <- log(i.pro+1)
+}
+
+dge.mou.germ.20.cen <- matrix(0, nrow = dim(dge.germ@data)[1], ncol = 20)
+for(i in c(1:20)){
+  cat(i)
+  i.cells <- dge.germ@cell.names[dge.germ@meta.data$clus==i & dge.germ@meta.data$species=="Mouse"]
+  i.pro <- apply(exp(dge.germ@data[,i.cells])-1,1,mean)
+  dge.mou.germ.20.cen[,i] <- log(i.pro+1)
+}
+```
+
+
+```{r}
+expr.pat <- diag(nrow = 20)
+dge.germ.20.cen.cor <- cor(t(dge.germ.20.cen), expr.pat, method = "spearman")
+rownames(dge.germ.20.cen) <- rownames(dge.germ@data)
+colnames(dge.germ.20.cen) <- c(1:20)
+```
+
+```{r}
+dge.germ.20.cen.std <- t(apply(dge.germ.20.cen,1,function(x) (x-mean(x))/sd(x)))
+dge.hum.germ.20.cen.std <- t(apply(dge.hum.germ.20.cen,1,function(x) (x-mean(x))/sd(x)))
+dge.mac.germ.20.cen.std <- t(apply(dge.mac.germ.20.cen,1,function(x) (x-mean(x))/sd(x)))
+dge.mou.germ.20.cen.std <- t(apply(dge.mou.germ.20.cen,1,function(x) (x-mean(x))/sd(x)))
+```
+
+```{r}
+rownames(dge.hum.germ.20.cen.std) <- rownames(dge.germ.20.cen)
+rownames(dge.mac.germ.20.cen.std) <- rownames(dge.germ.20.cen)
+rownames(dge.mou.germ.20.cen.std) <- rownames(dge.germ.20.cen)
+```
+
+
+```{r}
+for(i in c(1:20)){
+  cat(0.38)
+  cat(",")
+}
+```
+
+
+```{r}
+thred <- c(0.38,0.38,0.378,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.4,0.4,0.4,0.4,0.38,0.38)
+tot.genlist <- c()
+tot.genclus <- c()
+for(i in c(1:20)){
+genlist = rownames(dge.germ.20.cen)[unlist(lapply(c(1:dim(dge.germ.20.cen.cor)[1]),function(x) max(dge.germ.20.cen.cor[x,])> thred[i] & which.max(dge.germ.20.cen.cor[x,])==i))]
+num = length(genlist)
+tot.genlist <- c(tot.genlist, genlist)
+tot.genclus <- c(tot.genclus, rep(i, length(genlist)))
+cat(num)
+cat("\n")
+}
+```
+
+```{r}
+write.table(cbind(tot.genlist, tot.genclus), file = "~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/20_warped_marker.genelist", sep = "\t", quote = FALSE, row.names = FALSE)
+```
+
+
+```{r fig.width=5, fig.height=4.5}
+Heatmap(dge.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+```
+
+```{r}
+rownames(humMacMouOrth.1to1.in) <- humMacMouOrth.1to1.in$external_gene_name.x
+```
+
+
+```{r fig.width=5, fig.height=4.5}
+Heatmap(dge.hum.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+Heatmap(dge.mac.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+Heatmap(dge.mou.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+```
+
+```{r}
+plot(apply(dge.germ.20.cen.cor, 2, function(x) sum(x>0.4)))
+```
+
+```{r}
+dge.germ.20.cen <- dge.hum.germ.20.cen/3 + dge.mac.germ.20.cen/3 + dge.mou.germ.20.cen/3
+```
+
+```{r}
+expr.pat <- diag(nrow = 20)
+dge.germ.20.cen.cor <- cor(t(dge.germ.20.cen), expr.pat, method = "spearman")
+rownames(dge.germ.20.cen) <- rownames(dge.germ@data)
+colnames(dge.germ.20.cen) <- c(1:20)
+```
+
+```{r}
+for(i in c(1:20)){
+  cat(0.38)
+  cat(",")
+}
+```
+
+
+```{r}
+thred <- c(0.38,0.4,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.38,0.4,0.4,0.4,0.4,0.38,0.38)
+tot.genlist <- c()
+for(i in c(1:20)){
+genlist = rownames(dge.germ.20.cen)[unlist(lapply(c(1:dim(dge.germ.20.cen.cor)[1]),function(x) max(dge.germ.20.cen.cor[x,])> thred[i] & which.max(dge.germ.20.cen.cor[x,])==i))]
+num = length(genlist)
+tot.genlist <- c(tot.genlist, genlist)
+cat(num)
+cat("\n")
+}
+```
+
+```{r}
+dge.germ.20.cen.std <- t(apply(dge.germ.20.cen,1,function(x) (x-mean(x))/sd(x)))
+```
+
+
+```{r fig.width=5, fig.height=4.5}
+Heatmap(dge.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+```
+
+
+
+```{r fig.width=5, fig.height=4.5}
+Heatmap(dge.hum.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+Heatmap(dge.mac.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+Heatmap(dge.mou.germ.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+```
+
+
+Do for each species separately
+
+```{r}
+hum.20.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/hum.20.warpped.centroids.text", skip = 1, header = FALSE, row.names = 1)
+mac.20.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/mac.20.warpped.centroids.text", skip = 1, header = FALSE, row.names = 1)
+mou.20.cen <- read.table("~/storage/HumanMacaqueMouseCompAnaysis/interdata/Germ_PrincipleCurve_20Centroids/mou.20.warpped.centroids.text", skip = 1, header = FALSE, row.names = 1)
+```
+
+Select HVG for three species.
+```{r}
+
+```
+
+
+
+```{r}
+hum.20.cen <- hum.20.cen[apply(hum.20.cen,1,sum)!=0, ]
+mac.20.cen <- mac.20.cen[apply(mac.20.cen,1,sum)!=0, ]
+mou.20.cen <- mou.20.cen[apply(mou.20.cen,1,sum)!=0, ]
+```
+
+
+```{r}
+hum.20.cen.std <- t(apply(hum.20.cen,1,function(x) (x-mean(x))/sd(x)))
+mac.20.cen.std <- t(apply(mac.20.cen,1,function(x) (x-mean(x))/sd(x)))
+mou.20.cen.std <- t(apply(mou.20.cen,1,function(x) (x-mean(x))/sd(x)))
+```
+
+
+```{r}
+expr.pat <- diag(nrow = 20)
+hum.germ.20.cen.cor <- cor(t(hum.20.cen), expr.pat, method = "spearman")
+colnames(hum.germ.20.cen.cor) <- c(1:20)
+mac.germ.20.cen.cor <- cor(t(mac.20.cen), expr.pat, method = "spearman")
+colnames(mac.germ.20.cen.cor) <- c(1:20)
+mou.germ.20.cen.cor <- cor(t(mou.20.cen), expr.pat, method = "spearman")
+colnames(mou.germ.20.cen.cor) <- c(1:20)
+```
+
+```{r}
+for(i in c(1:20)){
+  cat(0.7)
+  cat(",")
+}
+```
+
+```{r}
+thred <- c(0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7)
+tot.genlist <- c()
+for(i in c(1:20)){
+genlist = rownames(hum.germ.20.cen.cor)[unlist(lapply(rownames(hum.germ.20.cen.cor),function(x) max(hum.germ.20.cen.cor[x,])> thred[i] & which.max(hum.germ.20.cen.cor[x,])==i))]
+num = length(genlist)
+tot.genlist <- c(tot.genlist, genlist)
+cat(num)
+cat("\n")
+}
+```
+
+```{r}
+thred <- c(0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7)
+mac.tot.genlist <- c()
+for(i in c(1:20)){
+genlist = rownames(mac.germ.20.cen.cor)[unlist(lapply(rownames(mac.germ.20.cen.cor),function(x) max(mac.germ.20.cen.cor[x,])> thred[i] & which.max(mac.germ.20.cen.cor[x,])==i))]
+num = length(genlist)
+mac.tot.genlist <- c(mac.tot.genlist, genlist)
+cat(num)
+cat("\n")
+}
+```
+
+```{r}
+for(i in c(1:20)){
+  cat(0.9)
+  cat(",")
+}
+```
+
+```{r}
+thred <- c(0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9)
+mou.tot.genlist <- c()
+for(i in c(1:20)){
+genlist = rownames(mou.germ.20.cen.cor)[unlist(lapply(rownames(mou.germ.20.cen.cor),function(x) max(mou.germ.20.cen.cor[x,])> thred[i] & which.max(mou.germ.20.cen.cor[x,])==i))]
+num = length(genlist)
+mou.tot.genlist <- c(mou.tot.genlist, genlist)
+cat(num)
+cat("\n")
+}
+```
+
+```{r fig.width=5, fig.height=4.5}
+Heatmap(hum.20.cen.std[tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+```
+
+```{r fig.width=5, fig.height=4.5}
+Heatmap(mac.20.cen.std[mac.tot.genlist,], cluster_rows = FALSE, cluster_columns = FALSE, show_row_names = FALSE)
+```
